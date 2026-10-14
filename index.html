@@ -1613,10 +1613,30 @@ function hud() {
 }
 // ---------- UI v2: 뚜까펫풍 밝은 만화 UI (벡터, 굵은 보라 윤곽선). 핀볼 판이 메인 화면, 하단 탭으로 전투·장비·캐릭터 ----------
 const UI = {ink:'#2a1450', cream:'#fff4d6', gold:'#ffd23a'};
+// ---------- 도트 UI (시안 2): 4픽셀 칸으로 찍는 상자. 1칸 테 + 모서리 1칸 깎음 + 위 빛 + 아래 그늘. 글씨는 둥근 글꼴 그대로 ----------
+const PXU = 4;
+function pxBox(x, y, w, h, fill, o = {}) {
+  const u = o.u || PXU, X = Math.round(x/u)*u, Y = Math.round(y/u)*u, Wd = Math.max(3, Math.round(w/u)), Ht = Math.max(3, Math.round(h/u));
+  if (o.drop) { ctx.fillStyle = typeof o.drop === 'string' ? o.drop : 'rgba(10,2,30,.5)'; ctx.fillRect(X + u, Y + u*2, (Wd - 1)*u, Ht*u); }
+  ctx.fillStyle = o.edge || UI.ink; ctx.fillRect(X + u, Y, (Wd - 2)*u, Ht*u); ctx.fillRect(X, Y + u, Wd*u, (Ht - 2)*u); // 테 (모서리 깎음)
+  ctx.fillStyle = fill; ctx.fillRect(X + u, Y + u, (Wd - 2)*u, (Ht - 2)*u);
+  if (o.light !== null) { ctx.fillStyle = o.light || 'rgba(255,255,255,.32)'; ctx.fillRect(X + u, Y + u, (Wd - 2)*u, u*(o.lh || 1)); }
+  if (o.shade !== null) { const sh = Math.min(Ht - 3, o.sh || 2); ctx.fillStyle = o.shade || 'rgba(20,0,40,.22)'; ctx.fillRect(X + u, Y + (Ht - 1 - sh)*u, (Wd - 2)*u, sh*u); }
+  return {X, Y, W:Wd*u, H:Ht*u, u};
+}
 const THEME = {orange:['#ffb43a', '#e8731a'], green:['#8ae04a', '#3f9a2a'], blue:['#6ac0ff', '#2a6ad0'], purple:['#a070f0', '#5a2fb0'], gray:['#a49cb8', '#625a78'], red:['#ff7a5a', '#d8302a'], yellow:['#ffe45a', '#e8a81a']};
 const RCOL = {common:'#9a90b0', uncommon:'#4ab85a', rare:'#3a96f0', unique:'#ffb41a'}; // UI용 등급색 (밝은·어두운 배경 모두에서 보임)
-const uiPath = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
-function uiLine(c, lw) { ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = c || UI.ink; ctx.lineWidth = lw || 5; ctx.stroke(); }
+function uiPath(x, y, w, h, r) { // 도트 둥근 상자 경로: 4픽셀 칸에 맞추고 모서리를 계단(칸 1~3개)으로 깎음. 클립·채우기·윤곽 모두 이 모양
+  const u = PXU, X = Math.round(x/u)*u, Y = Math.round(y/u)*u, Wd = Math.max(2*u, Math.round(w/u)*u), Ht = Math.max(2*u, Math.round(h/u)*u);
+  const n = Math.max(0, Math.min(3, Math.round(r/8), Math.floor(Wd/u/2) - 1, Math.floor(Ht/u/2) - 1)), st = [[1, 1], [1, 1], [2, 1]].slice(0, n); // 계단: (가로 칸, 세로 칸)
+  ctx.beginPath(); let cx = X, cy = Y + n*u; ctx.moveTo(cx, cy);
+  for (let i = n - 1; i >= 0; i--) { cy -= u; ctx.lineTo(cx, cy); cx += u; ctx.lineTo(cx, cy); }                      // 왼쪽 위
+  cx = X + Wd - n*u; ctx.lineTo(cx, cy); for (let i = 0; i < n; i++) { cx += u; ctx.lineTo(cx, cy); cy += u; ctx.lineTo(cx, cy); } // 오른쪽 위
+  cy = Y + Ht - n*u; ctx.lineTo(cx, cy); for (let i = 0; i < n; i++) { cy += u; ctx.lineTo(cx, cy); cx -= u; ctx.lineTo(cx, cy); } // 오른쪽 아래
+  cx = X + n*u; ctx.lineTo(cx, cy); for (let i = 0; i < n; i++) { cx -= u; ctx.lineTo(cx, cy); cy -= u; ctx.lineTo(cx, cy); }      // 왼쪽 아래
+  ctx.closePath();
+}
+function uiLine(c, lw) { ctx.lineJoin = 'miter'; ctx.lineCap = 'square'; ctx.strokeStyle = c || UI.ink; ctx.lineWidth = lw || 5; ctx.stroke(); }
 function uiTxt(s, x, y, size, fill, al) { // 굵은 보라 외곽선 글씨
   ctx.font = '900 ' + size + 'px ' + FONT; ctx.textAlign = al || 'center'; ctx.lineJoin = 'round'; ctx.strokeStyle = UI.ink; ctx.lineWidth = Math.max(4, size*.24); ctx.strokeText(s, x, y); ctx.fillStyle = fill || '#fff'; ctx.fillText(s, x, y);
 }
@@ -1638,22 +1658,18 @@ function uiWrap(s, x, y, size, maxW, maxLines, c, al, w, lh = 1.25) { // 줄바�
   const f = fitWrap(s, size, maxW, maxLines, w); f.lines.forEach((t, i) => uiLabel(t, x, y + i*f.size*lh, f.size, c, al, w)); return f.lines.length*f.size*lh;
 }
 function uiLabel(s, x, y, size, c, al, w) { ctx.font = (w || 700) + ' ' + size + 'px ' + FONT; ctx.textAlign = al || 'left'; ctx.fillStyle = c || UI.ink; ctx.fillText(s, x, y); } // 외곽선 없는 글씨 (밝은 패널 위)
-function uiBtn(b, label, theme, size, off) {
-  const [c1, c2] = THEME[off ? 'gray' : theme || 'orange'];
-  uiPath(b.x, b.y + 8, b.w, b.h, 20); ctx.fillStyle = dark(c2, .5); ctx.fill(); uiLine();
-  const g = ctx.createLinearGradient(0, b.y, 0, b.y + b.h); g.addColorStop(0, c1); g.addColorStop(1, c2);
-  uiPath(b.x, b.y, b.w, b.h, 20); ctx.fillStyle = g; ctx.fill();
-  ctx.save(); uiPath(b.x, b.y, b.w, b.h, 20); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,.08)'; // 사선 줄무늬
-  for (let k = b.x - b.h; k < b.x + b.w; k += 26) { ctx.beginPath(); ctx.moveTo(k, b.y + b.h); ctx.lineTo(k + 11, b.y + b.h); ctx.lineTo(k + 11 + b.h, b.y); ctx.lineTo(k + b.h, b.y); ctx.fill(); }
-  ctx.fillStyle = 'rgba(30,0,40,.16)'; ctx.fillRect(b.x, b.y + b.h*.74, b.w, b.h*.26);                       // 아래 그늘
-  if (b.h >= 120 && !off) { const u = (performance.now()/1000 + b.x/400)%3.2/1.1; if (u < 1) { const sx = b.x - 80 + u*(b.w + 160); ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.moveTo(sx, b.y + b.h); ctx.lineTo(sx + 34, b.y + b.h); ctx.lineTo(sx + 34 + b.h*.5, b.y); ctx.lineTo(sx + b.h*.5, b.y); ctx.fill(); } } // 큰 버튼: 빛 훑기
-  ctx.restore(); uiPath(b.x, b.y, b.w, b.h, 20); uiLine();
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; uiPath(b.x + 8, b.y + 6, b.w - 16, b.h*.34, 12); ctx.fill();
+function uiBtn(b, label, theme, size, off) { // 도트 버튼: 위쪽 밝은 띠 + 아래 진한 띠 + 큰 버튼은 가끔 빛이 지나감
+  const [c1, c2] = THEME[off ? 'gray' : theme || 'orange'], u = PXU;
+  const r = pxBox(b.x, b.y, b.w, b.h, c1, {drop:dark(c2, .5), light:lite(c1, .35), lh:2, shade:c2, sh:Math.max(2, Math.round(b.h/u*.28))});
+  if (b.h >= 80 && !off) { const t = (performance.now()/1000 + b.x/400)%3.2/1.1; if (t < 1) { const sx = Math.round((r.X + t*(r.W + 60))/u)*u; ctx.fillStyle = 'rgba(255,255,255,.3)'; for (let k = 1; k < r.H/u - 1; k++) { const xx = sx - k*u; if (xx > r.X && xx < r.X + r.W - 3*u) ctx.fillRect(xx, r.Y + k*u, u*2, u); } } }
   if (label) uiTxt(label, b.x + b.w/2, b.y + b.h/2 + (size || 30)*.36, size || 30, off ? '#ddd6ee' : '#fff');
 }
-function uiPanel(x, y, w, h, fill, lw) { uiPath(x, y + 7, w, h, 24); ctx.fillStyle = 'rgba(20,8,50,.45)'; ctx.fill(); uiPath(x, y, w, h, 24); ctx.fillStyle = fill || UI.cream; ctx.fill(); uiLine(UI.ink, lw || 5); }
-function uiPill(x, y, w, h, fill) { uiPath(x, y, w, h, h/2); ctx.fillStyle = fill; ctx.fill(); uiLine(UI.ink, 4); }
-function uiBar(x, y, w, h, v, cols) { uiPath(x, y, w, h, h/2); ctx.fillStyle = '#1a0a3a'; ctx.fill(); const ww = Math.max(0, Math.min(1, v))*(w - 6); if (ww > 2) { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, cols[0]); g.addColorStop(1, cols[1]); uiPath(x + 3, y + 3, ww, h - 6, (h - 6)/2); ctx.fillStyle = g; ctx.fill(); } uiPath(x, y, w, h, h/2); uiLine(UI.ink, 4); }
+function uiPanel(x, y, w, h, fill, lw) { pxBox(x, y, w, h, fill || UI.cream, {drop:true, u:lw >= 8 ? 5 : PXU}); }
+function uiPill(x, y, w, h, fill) { pxBox(x, y, w, h, fill, {shade:null}); }
+function uiBar(x, y, w, h, v, cols) { // 도트 막대: 칸 단위로 차오름
+  const r = pxBox(x, y, w, h, '#1a0a3a', {light:null, shade:null}), u = r.u, cells = r.W/u - 2, n = Math.round(Math.max(0, Math.min(1, v))*cells);
+  if (n > 0) { ctx.fillStyle = cols[1]; ctx.fillRect(r.X + u, r.Y + u, n*u, r.H - 2*u); ctx.fillStyle = cols[0]; ctx.fillRect(r.X + u, r.Y + u, n*u, Math.max(u, Math.floor((r.H - 2*u)/u/2)*u)); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(r.X + u, r.Y + u, n*u, u); }
+}
 function uiCoin(x, y, r) {
   const g = ctx.createRadialGradient(x - r*.3, y - r*.3, r*.1, x, y, r); g.addColorStop(0, '#fff3a0'); g.addColorStop(.6, '#ffd23a'); g.addColorStop(1, '#e8981a');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); uiLine(UI.ink, Math.max(3, r*.2));
@@ -1701,18 +1717,19 @@ const GLYPH = {
 };
 function glDropAt(x, y, s) { ctx.save(); ctx.translate(x, y); ctx.scale(s, s); glDrop(0, 0, 1, '#9ad8ff'); ctx.restore(); } // 땀방울
 const RIBBON = {red:['#e8483a', '#a82a2a'], gold:['#ffb43a', '#c8701a'], gray:['#8a80a8', '#5a5078'], green:['#5ac84a', '#2f8a2a']};
-function uiRibbon(cx, y, w, label, col = 'red', size = 34) { // 양끝이 접힌 리본 띠 (팝업 제목·항복 띠)
-  const [c1, c2] = RIBBON[col] || RIBBON.red, h = size*1.6;
-  for (const m of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + m*w/2 - m*20, y - h*.26); ctx.lineTo(cx + m*w/2 + m*46, y - h*.26); ctx.lineTo(cx + m*w/2 + m*30, y + h*.22); ctx.lineTo(cx + m*w/2 + m*46, y + h*.7); ctx.lineTo(cx + m*w/2 - m*20, y + h*.7); ctx.closePath(); ctx.fillStyle = c2; ctx.fill(); uiLine(UI.ink, 4); }
-  uiPath(cx - w/2, y - h/2, w, h, 10); const g = ctx.createLinearGradient(0, y - h/2, 0, y + h/2); g.addColorStop(0, lite(c1, .15)); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.fill(); uiLine(UI.ink, 5);
-  ctx.fillStyle = 'rgba(255,255,255,.3)'; uiPath(cx - w/2 + 8, y - h/2 + 6, w - 16, h*.22, 4); ctx.fill();
+function uiRibbon(cx, y, w, label, col = 'red', size = 34) { // 도트 리본 띠: 가운데 상자 + 양끝 계단식 꼬리 (팝업 제목·항복 띠)
+  const [c1, c2] = RIBBON[col] || RIBBON.red, h = size*1.6, u = PXU, top = y - h*.26, bot = y + h*.7;
+  for (const m of [-1, 1]) { const x0 = m < 0 ? cx - w/2 - 44 : cx + w/2 - 20, r = pxBox(x0, top, 64, bot - top, c2, {light:null, shade:'rgba(0,0,0,.2)', sh:1});
+    const mid = Math.round((r.Y + r.H/2)/u)*u, ex = m < 0 ? r.X : r.X + r.W - u; ctx.fillStyle = UI.ink;           // 꼬리 끝을 V자로 파냄 (계단)
+    for (let k = 0; k < 3; k++) ctx.fillRect(ex - m*k*u, mid - (3 - k)*u, u, (3 - k)*2*u); }
+  pxBox(cx - w/2, y - h/2, w, h, c1, {light:lite(c1, .3), lh:2, shade:c2, sh:2});
   uiTxt(label, cx, y + size*.36, size);
 }
-function uiPopup(x, y, w, h, fill) { // 팝업 공통 틀: 화면 어둡게 + 두꺼운 그림자 + 바깥 윤곽 + 안쪽 밝은 테
+function uiPopup(x, y, w, h, fill) { // 팝업 공통 틀: 화면 어둡게 + 도트 상자 + 안쪽 빛 테
   const v = ctx.createRadialGradient(W/2, H/2, 200, W/2, H/2, 900); v.addColorStop(0, 'rgba(20,8,50,.72)'); v.addColorStop(1, 'rgba(10,2,30,.92)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-  uiPath(x, y + 12, w, h, 30); ctx.fillStyle = 'rgba(10,2,30,.55)'; ctx.fill();
-  uiPath(x, y, w, h, 30); ctx.fillStyle = fill || UI.cream; ctx.fill(); uiLine(UI.ink, 7);
-  uiPath(x + 9, y + 9, w - 18, h - 18, 22); uiLine('rgba(255,255,255,.75)', 3);
+  const r = pxBox(x, y, w, h, fill || UI.cream, {drop:'rgba(10,2,30,.6)', u:6, shade:null}), u = r.u;
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(r.X + 2*u, r.Y + 2*u, r.W - 4*u, u/2); ctx.fillRect(r.X + 2*u, r.Y + 2*u, u/2, r.H - 4*u);
+  ctx.fillStyle = 'rgba(20,0,40,.15)'; ctx.fillRect(r.X + 2*u, r.Y + r.H - 2.5*u, r.W - 4*u, u/2); ctx.fillRect(r.X + r.W - 2.5*u, r.Y + 2*u, u/2, r.H - 4*u);
 }
 const charTV = id => TV[id] || {};
 const IGLYPH = { // 아이템 문양 (단위 좌표, 흰 면 + 보라 윤곽)
@@ -1754,17 +1771,24 @@ function uiItem(id, x, y, r) { // 아이템 배지: 둥근 사각 + 흰 문양 (
   if (it.evo) uiStar(x + r*.78, y - r*.78, r*.36, UI.gold);
 }
 function uiGlyph(id, x, y, s) { const g = GLYPH[id]; if (!g) return; ctx.save(); ctx.translate(x, y); ctx.scale(s, s); g(); ctx.restore(); }
-function uiBall(x, y, r, fns) { // 기능 수만큼 색을 나눈 광택 구 + 기능 문양(반지름 15 이상)
-  const n = fns.length; ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
-  if (!n) { const sg = ctx.createRadialGradient(x - r*.3, y - r*.35, r*.1, x, y, r); sg.addColorStop(0, '#ffffff'); sg.addColorStop(.6, '#dcd6ee'); sg.addColorStop(1, '#9a90c0'); ctx.fillStyle = sg; ctx.fillRect(x - r, y - r, r*2, r*2); }
-  else fns.forEach((f, i) => { ctx.fillStyle = FN[f].color; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r*1.4, -Math.PI/2 + i*TAU/n, -Math.PI/2 + (i + 1)*TAU/n); ctx.fill(); });
-  const g = ctx.createRadialGradient(x - r*.35, y - r*.4, r*.1, x, y, r*1.05); g.addColorStop(0, n ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.7)'); g.addColorStop(.45, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(30,10,60,.45)');
-  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r*2, r*2); ctx.restore();
-  if (n && r >= 15) {
-    if (n === 1) uiGlyph(fns[0], x, y, r*.6);
-    else { const P = n === 2 ? [[-.43, 0], [.43, 0]] : n === 3 ? [[-.43, -.4], [.43, -.4], [0, .45]] : [[-.43, -.43], [.43, -.43], [-.43, .43], [.43, .43]], k = n === 2 ? .38 : .33; fns.slice(0, 4).forEach((f, i) => uiGlyph(f, x + P[i][0]*r, y + P[i][1]*r, r*k)); }
-  }
-  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); uiLine(UI.ink, Math.max(3, r*.17));
+const BALL_GLY = {"fire":["...x....","...xx...","..xxx...","..xxxx..",".xxxxxx.",".xxyyxx.",".xxyyxx.","..xxxx.."],"frost":["...x....",".x.x.x..","..xxx...","xxxxxxx.","..xxx...",".x.x.x..","...x....","........"],"poison":["...x....","..xxx...","..xxx...",".xxxxx..",".xyxxx..",".xxxyx..","..xxx...","........"],"spark":["....xx..","...xx...","..xx....",".xxxxx..","...xx...","..xx....",".xx.....","........"],"bomb":[".....x..","....x...","..xxx...",".xxxxx..",".xxxxx..",".xxxxx..","..xxx...","........"],"split":["........",".xx..xx.","x..xx..x","x..xx..x",".xx..xx.","........","........","........"],"pierce":["...x....","..xxx...",".x.x.x..","...x....","...x....","...x....","..x.x...","........"],"vamp":["........",".x....x.",".xx..xx.",".xxxxxx.","..xxxx..","..x..x..","..x..x..","........"],"wind":["........","xxxxx...",".....x..","xxxxxx..","....x...","xxx.....","........","........"],"giant":["........",".xxxxxx.","x......x","x.xx.x.x","x......x",".xxxxxx.","........","........"],"homing":["...x....","..x.x...",".x.x.x..","x.xxx.x.",".x.x.x..","..x.x...","...x....","........"],"curse":["..xxx...",".x...x..",".x.x.x..",".x...x..","..xxx...","..x.x...","..x.x...","........"],"bleed":["...x....","...x....","..xxx...","..xxx...",".xxxxx..",".xxxxx..","..xxx...","........"],"crit":["...x....","...x....",".xxxxx..","xx.x.xx.",".xxxxx..","...x....","...x....","........"],"stun":[".x...x..","..x.x...","...x....","..x.x...",".x...x..","........","........","........"],"echo":["........","..xxx...",".x...x..","x.xxx.x.","x.x.x.x.","x.xxx.x.",".x...x..","..xxx..."],"meteor":["x.......",".x......","..x.....","...xxx..","...xxxx.","...xxxx.","....xx..","........"],"holy":["...x....","...x....",".xxxxx..","...x....","...x....","...x....","...x....","........"],"lucky":["........",".xx.xx..",".xx.xx..","...x....",".xx.xx..",".xx.xx..","....x...","........"],"rot":["..xxx...",".x.x.x..",".xxxxx..","..x.x...","..xxx...","........","........","........"],"swift":["........","x..x....",".x..x...","..x..x..",".x..x...","x..x....","........","........"],"acid":["..x.....","..xx....",".xxxx...",".xxxx...","..xx..x.",".....xx.",".....xx.","........"],"ricochet":["x.......",".x....x.","..x..x..","...xx...","........","........","........","........"],"shatter":["x..x..x.",".x.x.x..","..xxx...","xxx.xxx.","..xxx...",".x.x.x..","x..x..x.","........"],"nova":["...x....",".x.x.x..","..xxx...","xxxxxxx.","..xxx...",".x.x.x..","...x....","........"],"gravity":["..xxx...",".x...x..","x..x..x.","x.x.x.x.","x..x..x.",".x...x..","..xxx...","........"],"execute":["......x.",".....xx.","....xx..","...xx...","..xx....",".x......","x.......","........"],"prism":["...x....","..x.x...","..x.x...",".x...x..",".x...x..","xxxxxxx.","........","........"],"chrono":["..xxx...",".x...x..","x..x..x.","x..xx.x.","x.....x.",".x...x..","..xxx...","........"],"phoenix":["x.....x.","xx...xx.",".xx.xx..","..xxx...","...x....","..x.x...","........","........"]}; // 공 문양 8×8 (x = 흰 칸, y = 밝은 바탕색 칸)
+const ball16Cache = {};
+function ball16(fns) { // 16칸 공: 테 + 색(기능 수만큼 부채꼴로 나눔) + 왼쪽 위 빛 + 오른쪽 아래 그늘 + 문양
+  const key = fns.join(); if (ball16Cache[key]) return ball16Cache[key];
+  const c = mkCanvas(16, 16), x = c.getContext('2d'), n = fns.length;
+  for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const dx = i + .5 - 8, dy = j + .5 - 8, d = Math.hypot(dx, dy); if (d > 7.6) continue;
+    let col = n ? FN[fns[Math.floor(((Math.atan2(dx, -dy) + TAU)%TAU)/TAU*n)%n]].color : '#e8e2f6';
+    if (d > 6.6) col = UI.ink; else if (dx + dy > 6) col = dark(col, .35); else if (dx + dy < -7) col = lite(col, .45);
+    x.fillStyle = col; x.fillRect(i, j, 1, 1); }
+  x.fillStyle = '#ffffff'; x.fillRect(4, 3, 2, 1); x.fillRect(3, 4, 1, 2);
+  if (n === 1) { const g = BALL_GLY[fns[0]] || [], gc = ['holy', 'prism', 'execute'].includes(fns[0]) ? '#4a2394' : '#ffffff'; // 밝은 공은 문양을 진하게
+    g.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === '.') return; x.fillStyle = ch === 'y' ? lite(FN[fns[0]].color, .2) : gc; x.fillRect(4 + i, 4 + j, 1, 1); })); }
+  else if (n > 1) { x.fillStyle = '#ffffff'; x.fillRect(7, 7, 2, 2); }                                            // 여러 기능: 가운데 흰 점
+  return ball16Cache[key] = c;
+}
+function uiBall(x, y, r, fns) { // 메뉴·카드용 공: 16칸 도트를 지름 약 2r로 (정수 배율이라 칸이 고름)
+  const k = Math.max(1, Math.round(r*2/16)), d = 16*k, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(ball16(fns), Math.round(x - d/2), Math.round(y - d/2), d, d); ctx.imageSmoothingEnabled = sm;
 }
 function uiHeart(x, y, s) { ctx.beginPath(); ctx.moveTo(x, y + s*.9); ctx.bezierCurveTo(x - s*1.1, y + s*.1, x - s*.75, y - s*.9, x, y - s*.38); ctx.bezierCurveTo(x + s*.75, y - s*.9, x + s*1.1, y + s*.1, x, y + s*.9); ctx.fillStyle = '#ff5a6a'; ctx.fill(); uiLine(UI.ink, Math.max(3, s*.2)); ctx.beginPath(); ctx.arc(x - s*.4, y - s*.2, s*.15, 0, TAU); ctx.fillStyle = '#fff'; ctx.fill(); }
 function uiHouse(x, y, s) { // 로비 탭 아이콘
@@ -2021,22 +2045,18 @@ function cardInfo(c) {
 const cardAge = () => (performance.now() - (S.cardAt || 0))/1000;   // 카드가 뜬 뒤 흐른 초 (등장 연출·오터치 방지)
 const easeOut = k => 1 - (1 - Math.min(1, Math.max(0, k)))**3;
 function uiRays(cy, a, T, n = 14, len = 1400) { for (let k = 0; k < n; k++) { const an = T*.3 + k*TAU/n; ctx.beginPath(); ctx.moveTo(360, cy); ctx.lineTo(360 + Math.cos(an)*len, cy + Math.sin(an)*len); ctx.lineTo(360 + Math.cos(an + TAU/(2*n))*len, cy + Math.sin(an + TAU/(2*n))*len); ctx.closePath(); ctx.fillStyle = 'rgba(255,210,80,' + a + ')'; ctx.fill(); } }
-function uiTag(x, y, label, col) { ctx.font = '900 18px ' + FONT; const w = ctx.measureText(label).width + 30; uiPath(x, y, w, 32, 16); ctx.fillStyle = col; ctx.fill(); uiLine(UI.ink, 4); uiLabel(label, x + w/2, y + 24, 18, '#fff', 'center', 900); return w; }
-function uiKeyBadge(x, y, n) { ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fillStyle = '#4a2394'; ctx.fill(); uiLine(UI.ink, 4); uiTxt(String(n), x, y + 8, 22); }
+function uiTag(x, y, label, col) { ctx.font = '900 18px ' + FONT; const w = ctx.measureText(label).width + 30; pxBox(x, y, w, 32, col, {shade:dark(col, .25), sh:1}); uiLabel(label, x + w/2, y + 23, 18, '#fff', 'center', 900); return w; }
+function uiKeyBadge(x, y, n) { pxBox(x - 18, y - 18, 36, 36, '#4a2394', {shade:'#2a1460', sh:1}); uiTxt(String(n), x, y + 8, 22); }
 // 카드 틀: 그림자 + 윤곽 + 색띠(왼쪽 aw 폭, top이면 위쪽 aw 높이) + 안쪽 흰 테
-function uiCard(x, y, w, h, fill, acc, aw = 0, top = false, lw = 6) {
-  uiPath(x, y + 9, w, h, 26); ctx.fillStyle = 'rgba(10,2,30,.5)'; ctx.fill();
-  uiPath(x, y, w, h, 26); ctx.fillStyle = fill || UI.cream; ctx.fill();
+function uiCard(x, y, w, h, fill, acc, aw = 0, top = false, lw = 6) { // 카드 틀: 도트 상자 + 색띠(왼쪽 aw 폭, top이면 위쪽 aw 높이)
+  const u = lw >= 8 ? 5 : PXU, r = pxBox(x, y, w, h, fill || UI.cream, {drop:true, u, shade:'rgba(120,80,40,.18)'});
   if (acc && aw) {
-    ctx.save(); uiPath(x, y, w, h, 26); ctx.clip();
-    const g = top ? ctx.createLinearGradient(0, y, 0, y + aw) : ctx.createLinearGradient(x, 0, x + aw, 0); g.addColorStop(0, lite(acc, .25)); g.addColorStop(1, acc); ctx.fillStyle = g;
-    if (top) ctx.fillRect(x, y, w, aw); else ctx.fillRect(x, y, aw, h);
-    ctx.fillStyle = 'rgba(255,255,255,.22)'; if (top) ctx.fillRect(x, y, w, aw*.35); else for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x + k*44 - 30, y + h); ctx.lineTo(x + k*44 + 10, y); ctx.lineTo(x + k*44 + 24, y); ctx.lineTo(x + k*44 - 16, y + h); ctx.closePath(); ctx.fill(); }
-    ctx.beginPath(); if (top) { ctx.moveTo(x, y + aw); ctx.lineTo(x + w, y + aw); } else { ctx.moveTo(x + aw, y); ctx.lineTo(x + aw, y + h); } uiLine(UI.ink, 4);
-    ctx.restore();
+    const A = Math.max(2*u, Math.round(aw/u)*u);
+    if (top) { ctx.fillStyle = acc; ctx.fillRect(r.X + u, r.Y + u, r.W - 2*u, A - u); ctx.fillStyle = lite(acc, .3); ctx.fillRect(r.X + u, r.Y + u, r.W - 2*u, u); ctx.fillStyle = UI.ink; ctx.fillRect(r.X + u, r.Y + A, r.W - 2*u, u); }
+    else { ctx.fillStyle = acc; ctx.fillRect(r.X + u, r.Y + u, A - u, r.H - 2*u); ctx.fillStyle = lite(acc, .3); ctx.fillRect(r.X + u, r.Y + u, A - u, u*2); ctx.fillStyle = dark(acc, .2); ctx.fillRect(r.X + u, r.Y + r.H - 3*u, A - u, u*2);
+      ctx.fillStyle = 'rgba(255,255,255,.2)'; for (let k = 0; k < 3; k++) for (let j = 0; j < r.H/u - 5; j++) { const c = (k*9 + j)%(A/u - 1); ctx.fillRect(r.X + u + c*u, r.Y + (3 + j)*u, u, u); } // 도트 사선 줄무늬
+      ctx.fillStyle = UI.ink; ctx.fillRect(r.X + A, r.Y + u, u, r.H - 2*u); }
   }
-  uiPath(x, y, w, h, 26); uiLine(UI.ink, lw);
-  uiPath(x + 8, y + 8, w - 16, h - 16, 19); uiLine('rgba(255,255,255,.7)', 3);
 }
 function uiBallGlow(x, y, r) { const g = ctx.createRadialGradient(x, y, r*.3, x, y, r*1.6); g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r*1.6, 0, TAU); ctx.fill(); }
 function cardsUI() {
