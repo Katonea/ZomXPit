@@ -1964,7 +1964,7 @@ function buttons() {
   }
   if (S.mode === 'result') {
     const out = [{label:'로비로', theme:'orange', act:() => { reset(); S.mode = 'lobby'; }}]; // 클리어·실패·침략 모두 로비로만 (다음 레벨·다시 하기는 로비에서)
-    return [{...out[0], main:true, x:P.x + 40, y:P.y + P.h - 216, w:P.w - 80, h:100}, ...low.map((b, i) => ({...b, x:P.x + 40 + i*(bw + 16), y:P.y + P.h - 100, w:bw, h:72}))];
+    const P = RES; return [{...out[0], main:true, x:P.x + 40, y:P.y + P.h - 140, w:P.w - 80, h:100}];
   }
   return [];
 }
