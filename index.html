@@ -103,11 +103,12 @@ const BALL_RARITY = {fire:'common', frost:'common', poison:'common', wind:'commo
   vamp:'rare', giant:'rare', homing:'rare', curse:'rare', crit:'rare', stun:'rare', echo:'unique', meteor:'unique', holy:'unique',
   lucky:'common', rot:'common', swift:'common', acid:'uncommon', ricochet:'uncommon', shatter:'uncommon', nova:'rare', gravity:'rare', execute:'rare', prism:'unique', chrono:'unique', phoenix:'unique'};
 const BALL_IDS = Object.keys(BALL_RARITY), DECK_MAX = 8, BALL_MAXLV = 10;
+const openPool = r => { const o = BALL_IDS.filter(id => ballOpen(id)), p = o.filter(id => BALL_RARITY[id] === r); return p.length ? p : o; }; // 그 등급의 해금 볼 (없으면 해금 볼 전체)
 const ballCopies = lv => lv;                                              // 다음 레벨에 필요한 사본 (Lv1→2: 1장, Lv2→3: 2장 ...)
 const ballBonus = id => { const o = META.bag && META.bag[id]; return o ? .1*(o.lv - 1) : 0; };
 function gainBall(id) { const o = META.bag[id]; if (o) o.n++; else META.bag[id] = {n:0, lv:1}; return {kind:'ball', id, isNew:!o}; }
 function rollBall(table, mult = 1) { // 배율만큼 사본이 한꺼번에 (첫 장은 해금, 나머지는 사본)
-  const r = wkey(table), pool = BALL_IDS.filter(id => BALL_RARITY[id] === r), g = gainBall(pool[Math.floor(rand()*pool.length)]);
+  const r = wkey(table), pool = openPool(r), g = gainBall(pool[Math.floor(rand()*pool.length)]);
   if (mult > 1) { META.bag[g.id].n += mult - 1; g.mult = mult; } return g;
 }
 function upgradeBall(id) {
@@ -229,11 +230,12 @@ const RAID = {time:60, waves:3, waveLen:9, bossDelay:1.5, mobMul:[.6, .8, 1], bo
   spin:2.4, spiralGap:.3, spiralSpd:.75, spiralDmg:.85, // 탄막: 포탑 회전(라디안/초), 발사 간격 = fireEvery × spiralGap, 탄속·탄 피해 배율
   // 침략 리그: 침략 점수(META.rp)로 정해짐. 이기면 +win, 지면 -lose (0 밑으로 안 내려감). 리그가 높을수록 상대 등급·탄 피해(dmg)·탄막 패턴(pats)이 세짐
   win:30, lose:15,
-  leagues:[{name:'브론즈', min:0, c:'#c8844a', tier:1, dmg:1, pats:['spiral', 'fan']},
-    {name:'실버', min:120, c:'#b8c4d0', tier:1, dmg:1.15, pats:['spiral', 'fan', 'aimall']},
-    {name:'골드', min:300, c:'#ffd34a', tier:2, dmg:1.3, pats:['spiral', 'fan', 'aimall', 'flower']},
-    {name:'플래티넘', min:600, c:'#6ae0d0', tier:3, dmg:1.5, pats:['flower', 'aimall', 'fan', 'spiral']},
-    {name:'다이아', min:1000, c:'#8ab4ff', tier:3, dmg:1.75, pats:['flower', 'aimall', 'fan', 'spiral', 'storm']}],
+  // 아레나 = 리그. 처음 올라간 아레나의 balls가 해금돼 잭팟·처치 보상에서 나오기 시작 (낮을수록 직관적인 볼, 아레나마다 유니크 1개 이상). 이미 가진 볼은 그대로 쓴다
+  leagues:[{name:'브론즈', an:'폐허 놀이터', min:0, c:'#c8844a', tier:1, dmg:1, pats:['spiral', 'fan'], balls:['fire', 'frost', 'bomb', 'pierce', 'giant', 'meteor']},
+    {name:'실버', an:'버려진 쇼핑몰', min:120, c:'#b8c4d0', tier:1, dmg:1.15, pats:['spiral', 'fan', 'aimall'], balls:['poison', 'spark', 'split', 'crit', 'vamp', 'holy']},
+    {name:'골드', an:'군사 기지', min:300, c:'#ffd34a', tier:2, dmg:1.3, pats:['spiral', 'fan', 'aimall', 'flower'], balls:['wind', 'swift', 'bleed', 'homing', 'stun', 'phoenix']},
+    {name:'플래티넘', an:'병원 지하', min:600, c:'#6ae0d0', tier:3, dmg:1.5, pats:['flower', 'aimall', 'fan', 'spiral'], balls:['lucky', 'acid', 'ricochet', 'shatter', 'execute', 'echo']},
+    {name:'다이아', an:'좀비 왕좌', min:1000, c:'#8ab4ff', tier:3, dmg:1.75, pats:['flower', 'aimall', 'fan', 'spiral', 'storm'], balls:['rot', 'curse', 'nova', 'gravity', 'prism', 'chrono']}],
   // 탄막 패턴: gap = 발사 간격 배율(× fireEvery), dmg = 탄 하나 피해 배율. 한 패턴을 patLen초 쏘고 patRest초 쉼(포탑 깜빡임 = 다음 패턴 예고)
   patLen:4, patRest:.7,
   pat:{spiral:{gap:.3, dmg:1}, fan:{gap:.6, dmg:.8, n:5, spread:.75}, aimall:{gap:1.1, dmg:.7, n:16}, flower:{gap:.16, dmg:.6}, storm:{gap:.22, dmg:.55, n:3}},
@@ -266,6 +268,8 @@ const raidNextIn = () => raidTickets() >= RAIDT.max ? 0 : Math.max(0, RAIDT.ever
 function useRaidTicket() { if (raidTickets() < 1) return false; if (META.rt >= RAIDT.max) META.rtT = Date.now(); META.rt--; saveMeta(); return true; }
 const mmss = ms => { const t = Math.ceil(ms/1000); return Math.floor(t/60) + ':' + String(t%60).padStart(2, '0'); };
 function noTicket() { LOBBY.msg = '침략권이 없어요 · ' + mmss(raidNextIn()) + ' 뒤 1개 충전'; LOBBY.msgUntil = performance.now() + 1800; }
+const arenaMax = () => league(Math.max(META.rpMax || 0, META.rp || 0));                   // 지금까지 올라간 가장 높은 아레나
+const ballOpen = id => RAID.leagues.some((l, i) => i <= arenaMax() && l.balls.includes(id));  // 해금된 볼만 보상에서 나옴
 const league = (rp = META.rp || 0) => { let k = 0; RAID.leagues.forEach((l, i) => { if (rp >= l.min) k = i; }); return k; }; // 리그 번호 (0 = 브론즈)
 function raidLevel(r) {
   const t = r.tier;
@@ -317,7 +321,7 @@ let META = loadMeta();
 // ---------- 핀볼 머신 규칙 (확률 선결정, DESIGN 10장) ----------
 const wkey = obj => { const ks = Object.keys(obj); return ks[wpick(ks.map(k => obj[k]))]; };
 const rollSlot = () => wpick(PINBALL.slots.map(s => s.w));
-const pickBall = table => { const r = wkey(table), pool = BALL_IDS.filter(id => BALL_RARITY[id] === r); return pool[Math.floor(rand()*pool.length)]; };
+const pickBall = table => { const r = wkey(table), pool = openPool(r); return pool[Math.floor(rand()*pool.length)]; };
 function pickShardChar() { // 70%는 미해금 캐릭터, 30%는 전체 중
   const locked = CHARS.filter(c => !META.chars[c.id].owned), pool = locked.length && rand() < PINBALL.lockedBias ? locked : CHARS;
   return pool[Math.floor(rand()*pool.length)];
@@ -1248,7 +1252,8 @@ function endRun(win) {
   if (S.level.raid) { // 성 침략: 승리하면 핀볼 (첫 클리어 개념 없음). 패배는 위로 핀볼 1개
     const t = S.level.rival.tier - 1, pb = win ? RAID.pinball[t] : 1;
     META.pinball += pb; if (win) META.raidWins = (META.raidWins || 0) + 1;
-    const rp0 = META.rp || 0; META.rp = Math.max(0, rp0 + (win ? RAID.win : -RAID.lose));
+    const rp0 = META.rp || 0, am0 = arenaMax(); META.rp = Math.max(0, rp0 + (win ? RAID.win : -RAID.lose)); META.rpMax = Math.max(META.rpMax || 0, META.rp);
+    if (arenaMax() > am0) { const a = RAID.leagues[arenaMax()]; META.newArena = arenaMax(); toast('새 아레나 ' + a.an + '! 볼 6종 해금'); }
     saveMeta(); S.result = {win, raid:true, first:false, pinball:pb, reached:win ? 1 : Math.min(1, S.t/RAID.time), rp0, rp:META.rp}; S.mode = win ? 'verdict' : 'result'; return;
   }
   const L = S.level.id, first = win && L > META.maxLevel;
@@ -1723,8 +1728,9 @@ function drawTut() {
     else if (tutSeen('pb') && !tutSeen('equip')) { const [x, y] = tabTarget('balls'); tutHint('얻은 볼을 장착해요. 장착한 볼만 전투에 나와요', x, y, W/2, 800); }
     else if (tutSeen('equip') && !tutSeen('char') && CHARS.some(c => c.id !== 'hero' && (META.chars[c.id].owned || META.chars[c.id].shards > 0))) { const [x, y] = tabTarget('chars'); tutHint('캐릭터 조각이 모였어요. 10개면 해금, 이후 조각은 강화 재료', x, y, W/2, 800); }
     else if (autoPending() >= 1 && !tutSeen('collect')) tutHint('싸우지 않는 동안에도 핀볼이 쌓여요. 받아 가세요!', LB.collect.x + LB.collect.w/2, LB.collect.y + LB.collect.h/2, W/2, 700);
-    else if (META.maxLevel >= 2 && !tutSeen('raid')) tutHint('침략: 다른 유저의 캐릭터와 싸워요. 침략권은 30분마다 1개(최대 5). 이기면 살려줄지 처치할지 골라요', LB.raid.x + LB.raid.w/2, LB.raid.y + 20, W/2, 780);
+    else if (META.maxLevel >= 2 && !tutSeen('raid')) { const [x, y] = tabTarget('arena'); tutHint('침략이 열렸어요! 침략 탭으로 가 봐요', x, y, W/2, 800); }
   }
+  if (m === 'arena' && !tutSeen('raid')) tutHint('침략: 다른 유저의 캐릭터와 싸워요. 트로피를 모아 다음 아레나로 가면 새 볼이 해금돼요', 360, AB.go.y, W/2, 880);
   if (m === 'select' && MS.phase === 'idle' && !tutSeen('pb')) tutHint('PUSH를 눌러 공을 쏘세요! 첫 판은 잭팟 확정', 360, 1072, W/2, 880);
   if (m === 'balls' && !tutSeen('equip')) tutHint('볼을 눌러 장착하세요 (최대 8개). 장착한 볼만 전투에서 나와요', null, null, W/2, 1100);
   if (m === 'prep' && !tutSeen('prep')) tutHint('이번 판에 처음부터 들고 갈 볼 2개를 고르세요. 캐릭터 볼은 항상 함께', null, null, W/2, 980);
@@ -1742,6 +1748,7 @@ function drawMain() {
   if (S.mode === 'settings') { S.mode = SET.back; drawMain(); S.mode = 'settings'; drawSettings(); return; } // 설정 팝업: 아래 화면을 그린 위에 얹음
   if (S.mode === 'select' || S.mode === 'machine') { drawHub(); return; }
   if (S.mode === 'lobby') { drawLobby(); return; }
+  if (S.mode === 'arena') { drawArena(); return; }
   if (S.mode === 'match') { drawMatch(); return; }
   if (S.mode === 'prep') { drawPrep(); return; }
   if (S.mode === 'balls') { drawBalls(); return; }
@@ -2151,13 +2158,14 @@ function uiTopBar() { // 상단: 클리어 레벨 배지 + 보유 핀볼 + 선�
   uiPill(108, 22, 400, 64, '#4a2394'); uiBall(142, 54, 22, []); uiTxt(String(META.pinball - (S.mode === 'lobby' ? LOBBY.pend || 0 : 0)), 490, 66, 36, '#fff', 'right'); // 날아오는 중인 핀볼은 닿을 때 올라감
   ctx.beginPath(); ctx.arc(668, 54, 34, 0, TAU); ctx.fillStyle = '#7a45d8'; ctx.fill(); uiLine(UI.ink, 5); uiHero(668, 54, 17, humanLook(META.sel), '', 0);
 }
-// 왼쪽 캐릭터·볼, 가운데 로비(화면 정중앙, 넓게), 오른쪽 핀볼. x·w는 탭 칸(터치 영역)
-const TABS = [{id:'chars', label:'캐릭터', icon:'skull', x:0, w:125}, {id:'balls', label:'볼', icon:'balls', x:125, w:125}, {id:'lobby', label:'로비', icon:'house', x:250, w:220}, {id:'hub', label:'핀볼', icon:'gift', x:470, w:250}];
+// 왼쪽 캐릭터·볼, 가운데 로비(화면 정중앙, 넓게), 오른쪽 침략·핀볼. x·w는 탭 칸(터치 영역)
+const TABS = [{id:'chars', label:'캐릭터', icon:'skull', x:0, w:130}, {id:'balls', label:'볼', icon:'balls', x:130, w:130}, {id:'lobby', label:'로비', icon:'house', x:260, w:200}, {id:'arena', label:'침략', icon:'league', x:460, w:130}, {id:'hub', label:'핀볼', icon:'gift', x:590, w:130}];
 const tabCx = id => { const t = TABS.find(t => t.id === id); return t.x + t.w/2; };
 const TAB_Y = 1182, TAB_H = 88;
 function tabAlert(id) { // 탭 모서리 빨간 점: 지금 할 일이 있다
   if (id === 'lobby') return autoPending() >= 1;
   if (id === 'hub') return META.pinball >= 1;
+  if (id === 'arena') return META.newArena != null || raidTickets() >= RAIDT.max;
   if (id === 'balls') return BALL_IDS.some(b => { const o = META.bag[b]; return o && o.lv < BALL_MAXLV && o.n >= ballCopies(o.lv); });
   return false;
 }
@@ -2167,14 +2175,14 @@ function tabBar(active, off) {
     const on = t.id === active, b = {x:t.x + 6, y:TAB_Y + (on ? -4 : 2), w:t.w - 12, h:TAB_H - 4};
     if (on) uiBtn(b, '', 'orange'); else { uiPath(b.x, b.y, b.w, b.h, 18); ctx.fillStyle = off ? '#3a2a60' : '#4a2f8a'; ctx.fill(); uiLine(UI.ink, 4); }
     const cx = b.x + b.w/2, cy = b.y + 30;
-    if (t.icon === 'house') uiHouse(cx, cy, 15); else if (t.icon === 'gift') uiGift(cx, cy + 4, 15); else if (t.icon === 'balls') uiBall(cx, cy, 17, ['fire', 'frost', 'spark']); else if (t.icon === 'sword') { uiSword(cx - 8, cy + 2, 18); uiSword(cx + 8, cy + 2, 18); } else if (t.icon === 'shield') uiShield(cx, cy, 15, '#6ac0ff'); else uiTurtle(cx, cy, 17);
+    if (t.icon === 'house') uiHouse(cx, cy, 15); else if (t.icon === 'gift') uiGift(cx, cy + 4, 15); else if (t.icon === 'balls') uiBall(cx, cy, 17, ['fire', 'frost', 'spark']); else if (t.icon === 'league') uiLeague(cx, cy, 16, league()); else if (t.icon === 'sword') { uiSword(cx - 8, cy + 2, 18); uiSword(cx + 8, cy + 2, 18); } else if (t.icon === 'shield') uiShield(cx, cy, 15, '#6ac0ff'); else uiTurtle(cx, cy, 17);
     uiTxt(t.label, cx, b.y + b.h - 14, 24, off ? '#a49cb8' : '#fff');
     if (!on && tabAlert(t.id)) { ctx.beginPath(); ctx.arc(b.x + b.w - 20, b.y + 16, 11, 0, TAU); ctx.fillStyle = '#ff4a5a'; ctx.fill(); uiLine(UI.ink, 3); uiTxt('!', b.x + b.w - 20, b.y + 24, 18); }
   });
 }
-function goTab(id) { if (id === 'lobby') S.mode = 'lobby'; else if (id === 'hub') S.mode = 'select'; else if (id === 'balls') openBalls(); else S.mode = 'chars'; }
+function goTab(id) { if (id === 'lobby') S.mode = 'lobby'; else if (id === 'arena') S.mode = 'arena'; else if (id === 'hub') S.mode = 'select'; else if (id === 'balls') openBalls(); else S.mode = 'chars'; }
 function tabTap(hit) {
-  if (!['lobby', 'select', 'balls', 'chars'].includes(S.mode)) return false;
+  if (!['lobby', 'select', 'balls', 'chars', 'arena'].includes(S.mode)) return false;
   for (const t of TABS) if (hit({x:t.x, y:TAB_Y - 10, w:t.w, h:H - TAB_Y + 10})) { goTab(t.id); return true; }
   return false;
 }
@@ -2712,9 +2720,49 @@ function drawHub() { // 핀볼 페이지 = 대기(select) / 발사 중(machine)
   if (MS.phase === 'settle' && MS.plan.spins.length) { uiPill(130, 930, 460, 64, '#d8307a'); uiTxt('잭팟' + (MS.plan.spins[0].boxes > 1 ? ' ×' + MS.plan.spins[0].boxes : '') + ' 돌릴 준비!', W/2, 975, 28); }
   if (MS.msg) { uiPill(130, 900, 460, 64, '#d8302a'); uiTxt(MS.msg.s, W/2, 944, 28); }
 }
+// ---------- 침략 페이지: 세로 아레나 길 (시안 1+4). 위 = 잠긴 다음 아레나, 가운데 = 지금 아레나 + 트로피 막대, 아래 = 해금 볼 + 침략 버튼 ----------
+const AB = {go:{x:160, y:1060, w:400, h:100}};
+function arenaScene(i, x, y, w, h, lock) { // 아레나 그림: 하늘 + 먼 빌딩 + 바닥 + 아레나별 소품
+  const a = RAID.leagues[i], q = (X, Y, Ww, Hh, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(X), Math.round(Y), Math.round(Ww), Math.round(Hh)); };
+  const sky = ['#4a2a5a', '#2a3a5a', '#3a4a2a', '#1a3a3a', '#3a1a2a'][i], gr = ['#6a5a3a', '#5a5a6a', '#5a6a3a', '#3a5a5a', '#4a2a3a'][i];
+  q(x, y, w, h, sky); for (let k = 0; k < 6; k++) q(x + k*w/6 + 4, y + h*.35 + (k%3)*10, w/6 - 8, h*.4, '#1a1428');
+  q(x, y + h*.7, w, h*.3, gr); for (let k = 0; k < 10; k++) q(x + ((k*53)%Math.max(1, w - 12)), y + h*.75 + (k%3)*8, 8, 4, 'rgba(0,0,0,.25)');
+  if (i === 0) { q(x + w*.2, y + h*.45, 8, h*.3, '#8a6a3a'); q(x + w*.2, y + h*.45, w*.25, 6, '#c8302a'); q(x + w*.6, y + h*.55, w*.2, h*.15, '#d8a03a'); }
+  if (i === 1) { q(x + w*.15, y + h*.4, w*.7, h*.3, '#6a6a7a'); q(x + w*.3, y + h*.45, w*.4, 10, '#ff6ab0'); }
+  if (i === 2) { q(x + w*.1, y + h*.5, w*.3, h*.2, '#4a5a2a'); q(x + w*.35, y + h*.52, w*.2, 6, '#3a3a44'); for (let k = 0; k < 5; k++) q(x + w*.5 + k*14, y + h*.62, 10, 10, '#8a7a4a'); }
+  if (i === 3) { q(x + w*.3, y + h*.35, w*.4, h*.35, '#d8e8e8'); q(x + w*.46, y + h*.42, w*.08, h*.15, '#c8302a'); q(x + w*.4, y + h*.47, w*.2, h*.05, '#c8302a'); }
+  if (i === 4) { q(x + w*.35, y + h*.3, w*.3, h*.4, '#5a3a4a'); q(x + w*.4, y + h*.22, w*.2, 12, '#ffd23a'); for (let k = 0; k < 3; k++) q(x + w*.4 + k*w*.08, y + h*.15, 8, 14, '#ffd23a'); }
+  if (lock) { q(x, y, w, h, 'rgba(10,6,20,.6)'); q(x + w/2 - 18, y + h/2 - 6, 36, 30, '#9aa0ac'); ctx.strokeStyle = '#9aa0ac'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x + w/2, y + h/2 - 8, 12, Math.PI, 0); ctx.stroke(); }
+  ctx.strokeStyle = UI.ink; ctx.lineWidth = 6; ctx.strokeRect(x, y, w, h);
+}
+function arenaTap(hit) {
+  if (hit(AB.go)) { tutDone('raid'); META.newArena = null; if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); }
+}
+function drawArena() {
+  const T = performance.now()/1000, rp = META.rp || 0, cur = league(), A = RAID.leagues, nx = A[cur + 1], RC = {common:'#9aa0ac', uncommon:'#5ac84a', rare:'#3ab8ff', unique:'#ffb43a'};
+  ctx.drawImage(MENU_BG, 0, 0); uiTopBar();
+  { const rt = raidTickets(); uiLabel('침략권 ' + rt + '/' + RAIDT.max + (rt >= RAIDT.max ? ' · 가득' : ' · 다음 ' + mmss(raidNextIn())), W - 24, 136, 22, '#e6dcff', 'right', 900);
+    uiLeague(40, 128, 16, cur); uiLabel('트로피 ' + rp, 62, 136, 22, '#ffd23a', 'left', 900); }
+  if (nx) { pxBox(50, 170, 620, 150, '#6a6478', {shade:'#4a4458', light:'#a8a0b8', sh:3}); arenaScene(cur + 1, 66, 186, 588, 118, true);   // 잠긴 다음 아레나
+    uiRibbon(360, 168, 200, '아레나 ' + (cur + 2), 'gray', 26); uiLabel(nx.an + ' · 트로피 ' + nx.min + '에 열림', 360, 296, 22, '#e6dcff', 'center', 900); }
+  else uiLabel('최고 아레나에 올랐어요!', 360, 250, 30, '#ffd23a', 'center', 900);
+  ctx.globalAlpha = .45 + .2*Math.sin(T*3); ctx.fillStyle = '#7aff5a'; ctx.fillRect(30, 356, 660, 432); ctx.globalAlpha = 1;            // 지금 아레나: 깜빡이는 초록 테
+  pxBox(40, 366, 640, 412, '#e8d8b8', {shade:'#c8b088', light:'#fff4dc', sh:3}); arenaScene(cur, 58, 414, 604, 270, false);
+  uiRibbon(360, 364, 220, '아레나 ' + (cur + 1), 'gold', 30); uiRibbon(110, 364, 90, '현재', 'green', 22);
+  uiTxt(A[cur].an, 360, 740, 40, '#e8901a');
+  { const k = nx ? (rp - A[cur].min)/(nx.min - A[cur].min) : 1; pxBox(90, 800, 560, 40, '#1a0e30', {shade:null, light:null}); ctx.fillStyle = '#5ac84a'; ctx.fillRect(96, 806, Math.round(548*Math.min(1, k)), 28);
+    uiTxt(nx ? rp + ' / ' + nx.min : 'MAX', 370, 830, 24, '#fff'); }
+  pxBox(40, 862, 640, 180, '#e8d8b8', {shade:'#c8b088', light:'#fff4dc', sh:3}); uiLabel('이 아레나에서 해금된 볼', 360, 896, 22, '#6a5040', 'center', 900);
+  A[cur].balls.forEach((b, i) => { const bx = 62 + i*100, by = 912, rc = RC[BALL_RARITY[b]];
+    pxBox(bx, by, 88, 116, rc, {shade:dark(rc, .35), light:lite(rc, .3), sh:2}); ctx.fillStyle = '#2a1a4a'; ctx.fillRect(bx + 6, by + 6, 76, 70); uiBall(bx + 44, by + 41, 24, [b], T);
+    uiLabel(RARITY[BALL_RARITY[b]].name, bx + 44, by + 104, 18, '#fff', 'center', 900); });
+  { const p = 1 + Math.sin(T*4)*.03, B = AB.go; ctx.save(); ctx.translate(B.x + B.w/2, B.y + B.h/2); ctx.scale(p, p); uiBtn({x:-B.w/2, y:-B.h/2, w:B.w, h:B.h}, '침략 시작', 'orange', 44, raidTickets() < 1); ctx.restore(); }
+  tabBar('arena');
+  if (LOBBY.msg && performance.now() < LOBBY.msgUntil) { uiPill(110, 980, 500, 60, '#d8302a'); uiTxt(LOBBY.msg, W/2, 1020, 24); }
+}
 // ---------- 로비: 자동 사냥 + 자동 사냥 수익 + 레벨·침략 ----------
 const LOBBY = {pop:null, msgUntil:0, msg:'', flyT:0};
-const LB = {gear:{x:538, y:20, w:68, h:68}, lvl:{x:30, y:1000, w:320, h:140}, raid:{x:370, y:1000, w:320, h:140}, collect:{x:466, y:830, w:200, h:80}, ok:{x:200, y:735, w:320, h:80}, panel:{x:90, y:400, w:540, h:430}};
+const LB = {gear:{x:538, y:20, w:68, h:68}, lvl:{x:30, y:1000, w:660, h:140}, collect:{x:466, y:830, w:200, h:80}, ok:{x:200, y:735, w:320, h:80}, panel:{x:90, y:400, w:540, h:430}};
 const hm = h => Math.floor(h) + '시간 ' + Math.floor(h%1*60) + '분';
 function lobbyTap(hit) {
   if (LOBBY.pop) {
@@ -2724,7 +2772,6 @@ function lobbyTap(hit) {
   if (hit(LB.gear)) { openSettings(); return; }
   if (hit(LB.collect)) { const n = autoPending(); if (n >= 1) LOBBY.pop = {n, h:autoHours()}; else { LOBBY.msg = '아직 모인 핀볼이 없어요'; LOBBY.msgUntil = performance.now() + 1500; } }
   else if (hit(LB.lvl)) enterLevel(lvNext(), () => startLevel(lvNext()));
-  else if (hit(LB.raid)) { tutDone('raid'); if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); }
 }
 function drawLobby() {
   ctx.drawImage(RUINS, 0, 0);
@@ -2741,12 +2788,7 @@ function drawLobby() {
   uiBar(56, 760, 608, 30, hrs/AUTO.capH, ['#ffd23a', '#ff9a2a']); uiLabel('쌓인 시간 ' + hm(hrs) + ' / 최대 ' + AUTO.capH + '시간', 56, 822, 20, '#6a5a8a', 'left', 700);
   uiBall(84, 878, 28, []); uiTxt('+' + pend, 128, 896, 52, '#fff', 'left');
   uiBtn(LB.collect, '핀볼 받기', 'orange', 30, pend < 1);
-  { const lg = league(), l = RAID.leagues[lg], nx = RAID.leagues[lg + 1], rp = META.rp || 0; // 침략 리그: 배지 + 점수 + 다음 리그까지 막대
-    uiLabel(l.name + ' 리그 · 침략 점수 ' + rp + (nx ? ' / ' + nx.min : '') + ' · 상대는 가상 봇', W/2, 976, 18, '#fff', 'center', 700); }
-  uiBtn(LB.lvl, '', 'green'); uiSword(LB.lvl.x + 58, LB.lvl.y + 72, 30); uiTxt('레벨 ' + lvNext(), LB.lvl.x + 206, LB.lvl.y + 88, 46); uiTxt(LEVELS[lvNext() - 1].name, LB.lvl.x + 206, LB.lvl.y + 34, 16, '#e8ffd8');
-  { const rt = raidTickets(), B = LB.raid; uiBtn(B, '', 'red', 30, rt < 1); uiLeague(B.x + 62, B.y + 70, 30, league()); uiTxt('침략', B.x + 200, B.y + 88, 46);
-    for (let k = 0; k < RAIDT.max; k++) { ctx.beginPath(); ctx.arc(B.x + 140 + k*24, B.y + 116, 8, 0, TAU); ctx.fillStyle = k < rt ? '#ffd23a' : 'rgba(40,10,40,.45)'; ctx.fill(); uiLine(UI.ink, 3); } // 침략권 칸
-    uiTxt(rt >= RAIDT.max ? '침략권 가득' : rt + '/' + RAIDT.max + ' · ' + mmss(raidNextIn()), B.x + 300, B.y + 34, 16, '#ffe6d8', 'right'); }
+  uiBtn(LB.lvl, '', 'green'); uiSword(LB.lvl.x + 190, LB.lvl.y + 72, 34); uiTxt('레벨 ' + lvNext(), LB.lvl.x + 360, LB.lvl.y + 92, 52); uiTxt(LEVELS[lvNext() - 1].name, LB.lvl.x + 360, LB.lvl.y + 34, 18, '#e8ffd8');
   tabBar('lobby');
   { const now = performance.now(); pbStep(Math.min(.05, Math.max(0, (now - (LOBBY.pbT || now))/1000))); LOBBY.pbT = now; pbDraw(); } // 받은 핀볼이 팡 흩어져 위쪽 보유 핀볼로 날아감
   if (LOBBY.pop) {
@@ -3121,6 +3163,7 @@ function tap(x, y) {
   if (tabTap(hit)) return true;
   if (S.mode === 'select' || S.mode === 'machine') { machineTap(x, y, hit); return true; }
   if (S.mode === 'lobby') { lobbyTap(hit); return true; }
+  if (S.mode === 'arena') { arenaTap(hit); return true; }
   if (S.mode === 'prep') { prepTap(hit); return true; }
   if (S.mode === 'balls') { const b = ballButtons().find(hit); if (b && !b.off) b.act(); return true; }
   if (S.mode === 'chars') { const u = CHARS.findIndex((c, i) => hit(charUpBtn(i))); if (u >= 0 && META.chars[CHARS[u].id].owned) { charUpgrade(CHARS[u].id); return true; } const b = charButtons().find(hit); if (b) b.act(); return true; }
@@ -3362,7 +3405,9 @@ function selfTest() {
       PINBALL.slots.forEach((sl, i) => sl.w = w1[i]); META = meta0; }
     PINBALL.reel.pb = reel0; META.pinball = 0; HUBN.n = 1; MS = newMS(); META.plv = 1; META.pxp = 0;
     { const m0 = META.maxLevel; META.maxLevel = 6; const q0 = META.pinball, g = payOut({kind:'pb', v:pbPerReel()}, 3)[0]; ok(g.kind === 'pb' && g.v === 4*3 && META.pinball === q0 + 12, '핀볼 릴: (2 + 최고레벨/3) × 배율, 바로 핀볼로 지급'); META.maxLevel = m0; META.pinball = q0; }
-    META.deck = []; ok(!gainBall('meteor').isNew && META.bag.meteor.n === 1, '이미 있는 볼은 사본');
+    META.deck = []; META.bag.meteor = {n:0, lv:1}; ok(!gainBall('meteor').isNew && META.bag.meteor.n === 1, '이미 있는 볼은 사본');
+    { const r0 = META.rp, m0 = META.rpMax; META.rp = 0; META.rpMax = 0; const seen = new Set(); for (let k = 0; k < 300; k++) seen.add(pickBall({common:1, uncommon:1, rare:1, unique:1}));
+      ok([...seen].every(id => RAID.leagues[0].balls.includes(id)), '아레나 1: 해금 볼만 나옴'); META.rpMax = 300; ok(arenaMax() === 2 && ballOpen('phoenix') && !ballOpen('echo'), '최고 점수 기준으로 아레나 3까지 해금'); META.rp = r0; META.rpMax = m0; }
     META.bag.fire = {n:ballCopies(1) - 1, lv:1}; ok(!upgradeBall('fire') && META.bag.fire.lv === 1, '볼 강화: 사본이 모자라면 안 됨'); META.bag.fire.n++; ok(upgradeBall('fire') && META.bag.fire.lv === 2 && META.bag.fire.n === 0, '볼 강화: 사본만 있으면 됨 (골드 없음)');
     ok(!upgradeBall('fire'), '사본이 모자라면 강화 불가');
     reset(); const dm0 = shotProps({fns:['frost'], lv:1}).dmg; META.bag.frost.lv = 3; ok(Math.abs(shotProps({fns:['frost'], lv:1}).dmg - dm0*1.2) < 1e-9, '볼 레벨마다 피해 +10%');
