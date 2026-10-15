@@ -87,7 +87,7 @@ const evoOf = (a, b) => a.fns.length === 1 && b.fns.length === 1 && a.lv === RUL
 // ---------- 데이터: 캐릭터 (DESIGN 9장) ----------
 // 기본 능력치는 공통(공격 10, HP 120, 방어 10, 이동 228 (구 380의 60%)). 캐릭터마다 시작 볼과 능력이 다름. 플레이어 레벨·장착 볼은 buildChar에서 더해진다
 const CHAR = {
-  hero:{name:'소녀', start:[['bomb']], catchR:26, desc:'받기 판정 +30%. 시작 캐릭터'},
+  hero:{name:'소녀', start:[['bomb']], catchR:26, desc:'돌아오는 공 받는 범위 +30%. 시작 캐릭터'},
   slime:{name:'소방관', start:[['split']], hpMul:1.25, spdMul:.9, desc:'최대 HP +25%, 이동속도 -10%'},
   mushroom:{name:'과학자', start:[['poison']], statusMul:1.3, desc:'상태이상 지속시간 +30%'},
   bat:{name:'펑크', start:[['homing']], ballMul:1.15, vampMul:2, desc:'공 속도 +15%, 흡혈 효과 2배'},
@@ -126,7 +126,8 @@ function buildChar(sel, tut) { // 선택 캐릭터 + 플레이어 레벨 + 장�
   const own = start.flat(), pool = (META.deck || []).filter(b => FN[b] && !own.includes(b));
   const pick = tut ? [] : (META.pick ? META.pick.filter(b => pool.includes(b)) : pool).slice(0, 2); // 튜토리얼(레벨 1 첫 도전)은 캐릭터 볼만 // 입장 때 고른 2개 (고른 적 없으면 장착 볼 앞에서 2개)
   start = [...start, ...pick.map(b => [b])];
-  return {id, name:c.name, atk:10 + P.atk, hp:Math.round((120 + P.hp)*(c.hpMul || 1)), def:(10 + P.def)*(c.defMul || 1),
+  const cl = (META.chars && META.chars[id] && META.chars[id].lv) || 0; // 캐릭터 강화 단계
+  return {id, name:c.name, atk:(10 + P.atk)*(1 + PINBALL.charUp.atk*cl), hp:Math.round((120 + P.hp)*(c.hpMul || 1)*(1 + PINBALL.charUp.hp*cl)), def:(10 + P.def)*(c.defMul || 1),
     spd:228*(c.spdMul || 1), r:26, catchR:c.catchR || 20, normal:c.normal || 3, normalSize:c.normalSize || 1, ballMul:c.ballMul || 1, upMul:c.upMul || 1,
     statusMul:c.statusMul || 1, vampMul:c.vampMul || 1, magnet:c.magnet || 0, start};
 }
@@ -273,7 +274,7 @@ const PINBALL = {
   rarity:{common:55, uncommon:30, rare:12, unique:3},  // 선물 상자 볼 릴의 볼 등급
   reel:{ball:40, char:30, pb:30},                    // 선물 상자 슬롯머신 심볼 (릴마다 독립)
   tripleBall:{rare:75, unique:25}, tripleCharPb:40, tripleMul:10,   // 릴 3개가 모두 핀볼이면 핀볼 ×tripleMul. 모든 캐릭터를 이미 가졌을 때 캐릭터 3개 일치 = 핀볼 tripleCharPb
-  shardsToUnlock:10, lockedBias:.7, dupShardPb:4,                      // 해금 후/남는 캐릭터 조각 1개 = 핀볼 dupShardPb
+  shardsToUnlock:10, lockedBias:.7, dupShardPb:4, charMaxLv:5, charUpCost:lv => 10*lv, charUp:{atk:.06, hp:.08}, // 캐릭터 강화: Lv n → n+1에 조각 10n개, 레벨마다 공격 +6%·HP +8%                      // 해금 후/남는 캐릭터 조각 1개 = 핀볼 dupShardPb
 };
 // 자동 사냥 수익: 시간당 핀볼 = base + per × 클리어한 최고 레벨, capH시간까지 쌓이고 (꺼 둔 동안도 쌓임) 로비에서 받아 간다 (수치는 임시)
 const AUTO = {base:10, per:3, capH:8}; // 2026-10-14 상향 (6+2 → 10+3): 접속 사이 8시간이면 침략 몇 판 몫
@@ -313,9 +314,9 @@ function pickShardChar() { // 70%는 미해금 캐릭터, 30%는 전체 중
 }
 function giveShard(mult = 1, c = pickShardChar()) { // 배율만큼 조각이 한꺼번에 들어가고 (10개가 차면 해금) 남는 조각·해금된 캐릭터 조각은 핀볼로
   const st = META.chars[c.id];
-  if (st.owned) { const pb = PINBALL.dupShardPb*mult; META.pinball += pb; return {id:c.id, dup:true, n:mult, dupPb:pb}; }
+  if (st.owned) { st.shards += mult; return {id:c.id, dup:true, n:mult}; } // 이미 가진 캐릭터 조각 = 강화 재료
   const use = Math.min(PINBALL.shardsToUnlock - st.shards, mult), pb = (mult - use)*PINBALL.dupShardPb;
-  st.shards += use; META.pinball += pb; const unlocked = st.shards >= PINBALL.shardsToUnlock; if (unlocked) st.owned = true;
+  st.shards += use; META.pinball += pb; const unlocked = st.shards >= PINBALL.shardsToUnlock; if (unlocked) { st.owned = true; st.shards = 0; st.shards += mult - use; META.pinball -= pb; } // 해금하고 남은 조각은 강화 재료로
   return {id:c.id, n:use, unlocked, dupPb:pb};
 }
 function unlockChars(k) { // 미해금 캐릭터를 최대 k명 해금, 해금할 캐릭터가 모자란 만큼은 핀볼 tripleCharPb씩
@@ -2050,6 +2051,9 @@ function drawBalls() {
 }
 const charCard = i => ({x:30 + (i%2)*338, y:120 + Math.floor(i/2)*258, w:322, h:244}); // 2열 × 4줄
 function charButtons() { return CHARS.map((c, i) => ({...charCard(i), id:c.id, act:() => { if (META.chars[c.id].owned) { META.sel = c.id; saveMeta(); } }})); }
+const charUpBtn = i => { const b = charCard(i); return {x:b.x + 14, y:b.y + b.h - 58, w:118, h:44}; };
+const charUpNeed = st => PINBALL.charUpCost((st.lv || 0) + 1);
+function charUpgrade(id) { const st = META.chars[id]; if (!st.owned || (st.lv || 0) >= PINBALL.charMaxLv || st.shards < charUpNeed(st)) return false; st.shards -= charUpNeed(st); st.lv = (st.lv || 0) + 1; saveMeta(); sfx('lvup'); return true; }
 function drawChars() {
   ctx.drawImage(MENU_BG, 0, 0); uiTopBar();
   for (const b of charButtons()) {
@@ -2062,7 +2066,10 @@ function drawChars() {
     if (sb) { uiBall(tx + 14, b.y + 88, 14, sb); const f = fitWrap('시작 ' + FN[sb[0]].name + ' 볼', 18, tw - 34, 1, 900, 12); uiLabel(f.lines[0], tx + 34, b.y + 94, f.size, UI.ink, 'left', 900); }
     else { const f = fitWrap('시작: 무작위 볼 2종', 18, tw, 1, 900, 12); uiLabel(f.lines[0], tx, b.y + 94, f.size, UI.ink, 'left', 900); }
     uiWrap(c.desc, b.x + 16, b.y + 152, 17, b.w - 32, 2, '#6a5a8a', 'left', 700);
-    if (st.owned) { if (on) { uiPill(b.x + b.w - 150, b.y + b.h - 58, 136, 44, '#4ac84a'); uiTxt('선택됨', b.x + b.w - 82, b.y + b.h - 27, 22); } else uiBtn({x:b.x + b.w - 150, y:b.y + b.h - 60, w:136, h:46}, '선택', 'orange', 22); }
+    if (st.owned) { const lv = st.lv || 0, max = lv >= PINBALL.charMaxLv, need = charUpNeed(st), ok = !max && st.shards >= need; // 강화: 레벨·조각 막대·강화 버튼
+      uiTxt('Lv ' + (lv + 1), b.x + 70, b.y + 24, 20, UI.gold); if (!max) uiBar(b.x + 14, b.y + b.h - 72, 118, 10, st.shards/need, ['#ffd23a', '#e8731a']);
+      uiBtn(charUpBtn(CHARS.findIndex(c => c.id === b.id)), max ? 'MAX' : ok ? '강화!' : st.shards + '/' + need, ok ? 'yellow' : 'gray', ok ? 20 : 16, !ok);
+      if (on) { uiPill(b.x + b.w - 150, b.y + b.h - 58, 136, 44, '#4ac84a'); uiTxt('선택됨', b.x + b.w - 82, b.y + b.h - 27, 22); } else uiBtn({x:b.x + b.w - 150, y:b.y + b.h - 60, w:136, h:46}, '선택', 'orange', 22); }
     else { uiLock(b.x + 30, b.y + b.h - 36, 15); uiLabel('조각 ' + st.shards + '/' + PINBALL.shardsToUnlock, b.x + 52, b.y + b.h - 29, 17, UI.ink, 'left', 900); uiBar(b.x + 150, b.y + b.h - 46, 156, 20, st.shards/PINBALL.shardsToUnlock, ['#a8f06a', '#3f9a2a']); }
   }
   tabBar('chars');
@@ -2530,7 +2537,7 @@ function drawRewardCard(g) { // 선물 상자에서 나온 보상 카드 (중심
   uiPanel(-92, -78, 184, 156, g.kind === 'pb' ? '#d8ecff' : UI.cream);
   if (g.kind === 'ball') { uiBall(0, -22, 34, [g.id]); uiLabel(FN[g.id].name + ' 볼', 0, 46, 22, UI.ink, 'center', 900); if (g.isNew) { uiPill(22, -92, 66, 26, '#ff4a6a'); uiTxt('NEW', 55, -72, 16); } uiLabel(g.mult > 1 ? '×' + g.mult + (g.isNew ? ' (사본 +' + (g.mult - 1) + ')' : '') : g.isNew ? '' : '사본 +1', 0, 66, 16, '#c87a00', 'center', 900); }
   else if (g.kind === 'pb') { uiBall(0, -22, 34, []); uiTxt('+' + g.v, 0, 52, 30, '#bfe4ff'); uiLabel('핀볼', 0, 74, 16, '#2a6ad0', 'center', 900); }
-  else { uiHero(0, -26, 30, humanLook(g.id), 'happy'); uiLabel(CHARS.find(c => c.id === g.id).name + (g.kind === 'unlock' || g.unlocked ? ' 해금!' : g.dup ? ' (핀볼로)' : ' 조각 +' + (g.n || 1)), 0, 52, 17, g.kind === 'unlock' || g.unlocked ? '#e8731a' : UI.ink, 'center', 900); }
+  else { uiHero(0, -26, 30, humanLook(g.id), 'happy'); uiLabel(CHARS.find(c => c.id === g.id).name + (g.kind === 'unlock' || g.unlocked ? ' 해금!' : g.dup ? ' 강화 조각 +' + (g.n || 1) : ' 조각 +' + (g.n || 1)), 0, 52, 17, g.kind === 'unlock' || g.unlocked ? '#e8731a' : UI.ink, 'center', 900); }
 }
 // 핀볼 보상 연출 (뚜까펫풍): +N 핀볼이 팡 하고 작은 핀볼 여러 개로 흩어졌다가 차례로 보유 핀볼 표시로 날아감.
 // 핀볼 1개 = 1개씩, 많으면 최대 20개로 나눠 하나가 여러 개 값을 가짐. 닿을 때마다 arrive(값)로 표시 숫자가 올라감
@@ -2843,7 +2850,7 @@ function tap(x, y) {
   if (S.mode === 'lobby') { lobbyTap(hit); return true; }
   if (S.mode === 'prep') { prepTap(hit); return true; }
   if (S.mode === 'balls') { const b = ballButtons().find(hit); if (b && !b.off) b.act(); return true; }
-  if (S.mode === 'chars') { const b = charButtons().find(hit); if (b) b.act(); return true; }
+  if (S.mode === 'chars') { const u = CHARS.findIndex((c, i) => hit(charUpBtn(i))); if (u >= 0 && META.chars[CHARS[u].id].owned) { charUpgrade(CHARS[u].id); return true; } const b = charButtons().find(hit); if (b) b.act(); return true; }
   if (S.mode === 'result' || S.mode === 'verdict') { const b = buttons().find(hit); if (b && !b.off) b.act(); return true; }
   if (S.mode === 'levelup') { if (cardAge() > .3) S.choices.forEach((c, i) => { if (hit(CARD(i))) pick(c); }); return true; } // 뜬 직후 0.3초는 오터치 방지
   if (S.mode === 'fusion') { if (S.fz.t > 2.7) fusionDone(); return true; }
@@ -3014,8 +3021,8 @@ function selfTest() {
     ok(o.balls.some(g => ['common', 'uncommon'].includes(BALL_RARITY[g.id])), '불일치 볼은 일반 등급표');
     META = freshMeta(); rand = mulberry32(3); let un = null;
     for (let i = 0; i < 200 && !un; i++) { const g = giveShard(); if (g.unlocked) un = g.id; }
-    ok(un && META.chars[un].owned && META.chars[un].shards === PINBALL.shardsToUnlock, '조각 10개로 해금');
-    CHARS.forEach(c => META.chars[c.id].owned = true); const g0 = META.pinball; giveShard(); ok(META.pinball === g0 + PINBALL.dupShardPb, '해금 후 조각은 핀볼');
+    ok(un && META.chars[un].owned && META.chars[un].shards === 0, '조각 10개로 해금 (조각은 강화 재료로 다시 0부터)');
+    CHARS.forEach(c => { META.chars[c.id].owned = true; META.chars[c.id].shards = 0; }); const g0 = META.pinball, gs = giveShard(); ok(META.pinball === g0 && META.chars[gs.id].shards === 1, '해금 후 조각은 강화 재료'); META.chars[gs.id].shards = 10; ok(charUpgrade(gs.id) && META.chars[gs.id].lv === 1, '조각 10개로 캐릭터 강화'); META.chars[gs.id].lv = 0;
     META = freshMeta(); META.pinball = 12;
     ok(runMachine(30) === null && META.pinball === 12, '핀볼 부족 시 발사 불가');
     const pr = runMachine(10); ok(pr && META.pinball === 2 && pr.slots.length === 10, '핀볼 10개 소모');
