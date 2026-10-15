@@ -1097,7 +1097,7 @@ function shotProps(b) {
 // 조준: 조준 스틱을 누르는 중이면 그 방향 > 수동 모드면 마지막 스틱 방향 또는 마우스 커서 > 자동이면 가장 가까운 적
 const ctrlMode = () => (META.set && META.set.ctrl) || 'stick';
 function aimAngle() {
-  if (ctrlMode() === 'tap' && S.tgt) { const e = S.tgt.e; if (e && !e.dead) { S.tgt.x = e.x; S.tgt.y = e.y; } else if (e) S.tgt.e = null; return Math.atan2(S.tgt.y - S.py, S.tgt.x - S.px); } // 탭 조준: 찍은 좀비를 따라감 (죽으면 그 자리)
+  if (ctrlMode() === 'tap' && S.tgt) return S.tgt.a; // 탭 조준: 누른 순간의 각도를 그대로 유지 (이동해도 방향이 바뀌지 않음)
   if ((S.aimHold || !S.autoAim) && S.aimDir != null) return S.aimDir;
   if (!S.autoAim) return Math.atan2(S.my - S.py, S.mx - S.px);
   let best = null, bd = 1e9;
@@ -1586,9 +1586,8 @@ function drawControls() { // 조작 모드별 터치 UI
   const knob = o => { const k = stick(o, o.cx, o.cy, 70), m = Math.min(1, 70/(k.d || 1)); return [k.dx*m, k.dy*m]; };
   if (ctrlMode() === 'tap') {
     const [kx, ky] = mv ? knob(mv) : [0, 0]; joyDraw(TAPJOY.x, TAPJOY.y, kx, ky, TAPJOY.r, '#ffffff', mv ? '' : '이동', !!mv);
-    if (S.tgt) { const T = performance.now()/1000, x = S.tgt.x, y = S.tgt.y, r = 22 + Math.sin(T*8)*3, col = S.tgt.e && !S.tgt.e.dead ? '#ff4a4a' : '#8ad8ff'; // 조준점: 좀비에 고정이면 빨강
-      ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
-      for (let k = 0; k < 4; k++) { const an = k*Math.PI/2 + T; ctx.fillStyle = col; ctx.fillRect(Math.round(x + Math.cos(an)*(r + 8)) - 4, Math.round(y + Math.sin(an)*(r + 8)) - 4, 8, 8); } }
+    if (S.tgt) { const age = (performance.now() - S.tgt.t)/1000; if (age < .5) { const r = 18 + age*30; ctx.globalAlpha = 1 - age*2; ctx.strokeStyle = '#8ad8ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(S.tgt.x, S.tgt.y, r, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; } // 누른 자리 물결
+      const a = S.tgt.a, cx = S.px + Math.cos(a)*300, cy = S.py + Math.sin(a)*300; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillStyle = '#8ad8ff'; for (let k = 0; k < 4; k++) ctx.fillRect(-k*6, -k*5 - 3, 6, k*10 + 6); ctx.restore(); } // 조준 각도 끝의 화살촉
     else if (S.t < 6) uiTxt('조준할 곳을 누르세요', W/2, PMIN + 40, 24, '#8ad8ff');
   } else {
     if (mv) { const [kx, ky] = knob(mv); joyDraw(mv.x, mv.y, kx, ky, 70, '#ffffff', '', true); } else joyDraw(150, BOT - 130, 0, 0, 70, '#ffffff', '이동', false); // 손 떼면 자리 안내
@@ -2846,14 +2845,11 @@ cv.addEventListener('mousemove', e => { [S.mx, S.my] = pt(e); S.aimDir = null; i
 addEventListener('mouseup', () => { S.goal = null; MS.hold = false; });
 // 터치 조작 (설정 > 조작):
 //  stick = 좌우 반쪽 조이스틱: 왼쪽 반 누른 자리에 이동 스틱, 오른쪽 반 누른 자리에 조준 스틱
-//  tap   = 탭 조준: 왼쪽 아래 고정 이동 스틱 + 그 밖을 누르면 그곳을 조준 (좀비 근처를 누르면 그 좀비를 따라 조준, 끌면 계속 바뀜)
+//  tap   = 탭 조준: 아래 가운데 고정 이동 스틱 + 그 밖을 누르면 그쪽 각도로 조준 (각도는 이동해도 유지, 끌면 계속 바뀜)
 const touches = {};
-const TAPJOY = {x:118, y:BOT - 120, r:78}; // 탭 조준 모드의 고정 이동 스틱 자리
+const TAPJOY = {x:W/2, y:BOT - 110, r:78}; // 탭 조준 모드의 고정 이동 스틱 자리 (아래 가운데)
 const stick = (o, x, y, max) => { const dx = x - o.x, dy = y - o.y, d = Math.hypot(dx, dy); return {dx, dy, d, k:Math.min(1, d/max)/(d || 1)}; };
-function setTapTarget(x, y) { // 누른 곳에서 가장 가까운 좀비(몸 + 40px 안)가 있으면 그 좀비에 고정
-  let best = null, bd = 1e9; for (const e of S.enemies) { if (e.dead) continue; const d = Math.hypot(e.x - x, e.y - y); if (d < e.r + 40 && d < bd) { bd = d; best = e; } }
-  S.tgt = {x, y, e:best};
-}
+function setTapTarget(x, y) { S.tgt = {a:Math.atan2(y - S.py, x - S.px), x, y, t:performance.now()}; } // 누른 곳 방향의 각도만 기억
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
