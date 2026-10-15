@@ -114,7 +114,7 @@ function upgradeBall(id) {
   const o = META.bag[id]; if (!o || o.lv >= BALL_MAXLV || o.n < ballCopies(o.lv)) return false;
   o.n -= ballCopies(o.lv); o.lv++; saveMeta(); return true;
 }
-function toggleDeck(id) { const d = META.deck, i = d.indexOf(id); if (i >= 0) d.splice(i, 1); else if (META.bag[id] && d.length < DECK_MAX) d.push(id); else return false; saveMeta(); return true; }
+function toggleDeck(id) { tutDone('equip'); const d = META.deck, i = d.indexOf(id); if (i >= 0) d.splice(i, 1); else if (META.bag[id] && d.length < DECK_MAX) d.push(id); else return false; saveMeta(); return true; }
 // 플레이어 레벨 (DESIGN 12장): 핀볼 경험치 슬롯으로 오르고, 레벨마다 기본 능력치가 오른다
 const PLV = {need:lv => 20 + 12*lv, atk:1, hp:10, def:1};
 const plvStats = () => { const k = (META.plv || 1) - 1; return {atk:PLV.atk*k, hp:PLV.hp*k, def:PLV.def*k}; };
@@ -296,7 +296,7 @@ function loadMeta() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; Object.assign(m, s, {chars:Object.assign(m.chars, s.chars || {})}); } catch (e) { /* 손상·차단: 새로 시작 */ }
   if (m.gold) m.pinball = (m.pinball || 0) + Math.floor(m.gold/100); delete m.gold; // 골드 폐지: 옛 저장의 골드는 100골드 = 핀볼 1개로 환산
   for (const k of ['equip', 'equipped', 'uid', 'pbLv', 'pbXp']) delete m[k]; // 장비·핀볼 레벨 제거 이전 저장
-  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); if (!m.set.ctrlPicked) m.set.ctrl = 'tap'; // 직접 고른 적 없으면 탭 조준 (예전 기본값 stick 저장분도)
+  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); m.tut = Object.assign({seen:{}}, m.tut); // 튜토리얼 본 기록 if (!m.set.ctrlPicked) m.set.ctrl = 'tap'; // 직접 고른 적 없으면 탭 조준 (예전 기본값 stick 저장분도)
   m.deck = m.deck.filter(id => m.bag[id]).slice(0, DECK_MAX);
   return m;
 }
@@ -327,8 +327,8 @@ function unlockChars(k) { // 미해금 캐릭터를 최대 k명 해금, 해금�
 }
 // 선물 상자 슬롯머신: 한 사이클에 한 번만 돈다. 선물 칸에 처음 들어갈 때 릴 3개를 굴려 보상(볼 종류·캐릭터까지)을 정하고,
 // 칸에 들어갈 때마다 같은 보상을 ×mult 지급 → 사이클 보상 = 들어간 상자 수 × 배율. 3개 일치면 상위 보상 1개로 대체, 아니면 릴 3개 보상을 모두 지급
-function spinJackpot(out, mult = 1) {
-  const reels = [0, 1, 2].map(() => wkey(PINBALL.reel)), triple = reels.every(r => r === reels[0]) ? reels[0] : null;
+function spinJackpot(out, mult = 1) { // 튜토리얼 잭팟(out.tutJp)은 릴이 볼 3개
+  const reels = out.tutJp ? ['ball', 'ball', 'ball'] : [0, 1, 2].map(() => wkey(PINBALL.reel)), triple = reels.every(r => r === reels[0]) ? reels[0] : null;
   const tg = triple === 'ball' ? [{kind:'ball', id:pickBall(PINBALL.tripleBall)}] : triple === 'char' ? [{kind:'unlock'}] : triple === 'pb' ? [{kind:'pb', v:pbPerReel()*PINBALL.tripleMul}]
     : reels.map(r => r === 'ball' ? {kind:'ball', id:pickBall(PINBALL.rarity)} : r === 'char' ? {kind:'shard', c:pickShardChar()} : {kind:'pb', v:pbPerReel()});
   const spin = {reels, triple, tg, got:[], boxes:0, mult:0};
@@ -360,7 +360,7 @@ function tally(out, g) {
 const newPlan = () => ({n:0, slots:[], spins:[], balls:[], pb:0, shards:{}, unlocks:[], exp:0, ups:[]});
 function rollOne(out, mult) {
   META.pinball -= mult; out.n++;
-  const si = rollSlot(), sl = PINBALL.slots[si]; out.slots.push(si);
+  const first = !tutSeen('pb') && out.n === 1, si = first ? PINBALL.slots.findIndex(x => x.id === 'gift') : rollSlot(), sl = PINBALL.slots[si]; out.slots.push(si); if (first) out.tutJp = true; // 튜토리얼: 첫 공은 잭팟 확정
   if (sl.id === 'gift') { if (out.spins.length) addGift(out, out.spins[0], mult); else out.spins.push(spinJackpot(out, mult)); } else { out.exp += sl.v*mult; out.ups.push(...gainExp(sl.v*mult)); }
   return si;
 }
@@ -749,7 +749,7 @@ function buildChoices() {
   while (out.length < 3 && rest.length) out.push(rest.pop());
   return out;
 }
-function pick(c) {
+function pick(c) { tutDone('card'); if (c.type === 'fuse' || c.type === 'evo') tutDone('fuse');
   if (c.type === 'up') c.b.lv = Math.min(RULE.maxLv, c.b.lv + 1); // 카드 대기 중 공짜 강화로 이미 오른 경우 대비
   else if (c.type === 'new') S.balls.push({fns:[c.id], lv:1});
   else if (c.type === 'fuse' || c.type === 'evo') {
@@ -926,8 +926,8 @@ function freeUpgrade() { // 먹으면 게임이 멈추고 올릴 볼을 직접 �
   if (!freeCand().length && !S.fu.items.length) { S.fu = null; S.xp += n*.5*need(); toast('공짜 강화! 경험치로 전환'); checkLevel(); return; }
   S.mode = 'freeup'; S.shake = 8; burst(S.px, S.py, '#ffd34a', 40);
 }
-function freePick(b) { b.lv++; burst(S.px, S.py, '#ffd34a', 24); freeNext(); }
-function freeItem(o) { // o = {kind:'new'|'up'|'evo', id}
+function freePick(b) { tutDone('free'); b.lv++; burst(S.px, S.py, '#ffd34a', 24); freeNext(); }
+function freeItem(o) { tutDone('free'); // o = {kind:'new'|'up'|'evo', id}
   const it = ITEM[o.id];
   if (o.kind === 'evo') { for (const p of it.evo) delete S.items[p]; S.items[o.id] = 1; S.shake = 10; toast('진화! ' + it.name); }
   else { S.items[o.id] = IL(o.id) + 1; toast(it.name + ' Lv' + S.items[o.id]); }
@@ -1363,7 +1363,7 @@ function update(dt) {
     if ((s.life -= dt) <= 0) { s.gone = true; continue; }
     if (s.y >= BOT - s.r) { if (s.chamber) s.ret = true; else s.gone = true; continue; } // 맨 밑바닥에 닿아도 회수
     if (s.chamber && s.bounced && Math.hypot(s.x - S.px, s.y - S.py) < s.r + ch.catchR) { // 몸으로 받으면 즉시 회수
-      recover(s); S.fx.push({k:'ring', x:S.px, y:S.py, r:30, t:.25, T:.25, c:'#9fffb0'}); continue;
+      recover(s); S.caught = true; S.fx.push({k:'ring', x:S.px, y:S.py, r:30, t:.25, T:.25, c:'#9fffb0'}); continue;
     }
     for (const e of S.enemies) {
       if (e.dead) continue;
@@ -1508,10 +1508,53 @@ function drawRival(e) { // 침략 상대: 다른 유저의 사람 캐릭터를 �
   blit(rivalSprite(e.rival, e.rest && Math.floor(S.t*12)%2 ? 'flash' : st, mv && Math.floor(S.t*6)%2 ? 1 : 0), e.x, e.y + by, e.r*2.2/16); // 쉬는 동안 깜빡 = 다음 패턴 예고
 }
 function drawEnemy(e) {
+  if (e.type !== 'rival' && !ENEMY[e.type].boss && S.mode === 'play' && META.tut && !META.tut.seen[e.type]) { S.seenAt = S.seenAt || {}; if (S.seenAt[e.type] == null) S.seenAt[e.type] = S.t; // 처음 보는 좀비 이름표 (3.5초)
+    if (S.t - S.seenAt[e.type] > 3.5) { META.tut.seen[e.type] = 1; saveMeta(); } else { const nm = ENEMY[e.type].name; ctx.font = '900 17px ' + FONT; const w = ctx.measureText(nm).width + 18; pxBox(e.x - w/2, e.y - e.r - 58, w, 30, '#ffd23a', {shade:null, light:null}); uiLabel(nm, e.x, e.y - e.r - 37, 17, UI.ink, 'center', 900); } }
   if (e.type === 'rival') drawRival(e); else drawUnit(e);
   if (e.curseT > 0 && e.type === 'rival') px(e.x, e.y - e.r - 22, 8, FN.curse.color);
 }
-function draw() { drawMain(); if (TITLE.on) drawTitle(); } // 타이틀은 항상 맨 위
+
+// ---------- 튜토리얼 (한 번씩만, META.tut에 기록) ----------
+const tutDone = k => { if (!META.tut) META.tut = {seen:{}}; if (!META.tut[k]) { META.tut[k] = 1; saveMeta(); } };
+const tutSeen = k => META.tut && META.tut[k];
+function tutHint(text, tx, ty, bx, by) { // 말풍선(bx, by 중심) + 목표(tx, ty)를 가리키며 통통 튀는 화살표. tx가 null이면 말풍선만
+  const T = performance.now()/1000, lines = wrapLines(text, 24, 460, 900), h = 30 + lines.length*32, w = 520;
+  const X = Math.max(20, Math.min(W - w - 20, bx - w/2)), Y = by - h/2;
+  pxBox(X, Y, w, h, '#fff4d6', {drop:'rgba(10,2,30,.55)', shade:'#e0c8a0', sh:2});
+  lines.forEach((l, i) => uiLabel(l, X + w/2, Y + 40 + i*32, 24, UI.ink, 'center', 900));
+  if (tx == null) return;
+  const b = Math.abs(Math.sin(T*5))*14, up = ty < Y, ax = tx, ay = up ? ty + 34 + b : ty - 34 - b;
+  ctx.fillStyle = UI.ink; ctx.beginPath(); if (up) { ctx.moveTo(ax, ay - 30); ctx.lineTo(ax - 26, ay + 4); ctx.lineTo(ax + 26, ay + 4); } else { ctx.moveTo(ax, ay + 30); ctx.lineTo(ax - 26, ay - 4); ctx.lineTo(ax + 26, ay - 4); } ctx.fill();
+  ctx.fillStyle = '#ffd23a'; ctx.beginPath(); if (up) { ctx.moveTo(ax, ay - 20); ctx.lineTo(ax - 16, ay); ctx.lineTo(ax + 16, ay); } else { ctx.moveTo(ax, ay + 20); ctx.lineTo(ax - 16, ay); ctx.lineTo(ax + 16, ay); } ctx.fill();
+  ctx.globalAlpha = .45 + .3*Math.sin(T*6); ctx.strokeStyle = '#ffd23a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(tx, ty, 44 + Math.sin(T*6)*6, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+}
+const tabTarget = id => [tabCx(id), TAB_Y + TAB_H/2];
+function drawTut() {
+  if (TITLE.on || S.mode === 'settings') return;
+  const m = S.mode;
+  if (m === 'play' && S.tutRun && !tutSeen('fight')) { // 1단계: 첫 전투
+    const st = S.tutStep || 0, tapM = ctrlMode() === 'tap';
+    if (st === 0) { if (Math.hypot(S.px - S.tut0.x, S.py - S.tut0.y) > 90) S.tutStep = 1; else tutHint(tapM ? '아래 스틱을 끌어 움직여 보세요' : '왼쪽 화면을 누르고 끌어 움직여 보세요', tapM ? TAPJOY.x : 150, tapM ? TAPJOY.y : BOT - 130, W/2, PMIN + 40); }
+    else if (st === 1) { if (S.tgt || S.aimHold || S.aimDir != null || S.t - (S.tutT || (S.tutT = S.t)) > 7) S.tutStep = 2; else tutHint(tapM ? '쏘고 싶은 쪽을 누르세요. 그 방향이 계속 유지돼요' : '오른쪽 화면을 누르고 끌어 조준하세요', W/2, PMIN - 120, W/2, PMIN + 60); }
+    else if (st === 2) { if (S.caught) S.tutStep = 3; else { const r = S.shots.find(o => o.chamber && o.bounced && !o.gone && o.y > PMIN - 200); tutHint('공은 튕겨서 돌아와요. 몸으로 받아야 다시 쏠 수 있어요', r ? r.x : null, r ? r.y : null, W/2, TOP + 150); } }
+    else if (st === 3) { const g = S.picks.find(p => p.kind === 'xp'); if (S.xp > 0 || S.lv > 1) { S.tutStep = 4; tutDone('fight'); } else if (g) tutHint('파란 보석을 주우면 경험치! 가득 차면 레벨업', g.x, g.y, W/2, TOP + 150); }
+  }
+  if (m === 'levelup' && !tutSeen('card')) tutHint('카드를 하나 골라 볼을 강화하거나 새 볼을 얻어요', null, null, W/2, 1210);
+  if (m === 'levelup' && !tutSeen('fuse') && S.choices && S.choices.some(c => c.type === 'fuse' || c.type === 'evo')) tutHint('Lv5 볼 두 개를 합치면 기능이 합쳐져요. 짝이 맞으면 진화!', null, null, W/2, 1210);
+  if (m === 'freeup' && !tutSeen('free')) tutHint('무료 강화! 볼을 올리거나 아이템을 골라요. 아이템은 아래 칸을 하나 써요', null, null, W/2, 1210);
+  if (m === 'lobby' && !LOBBY.pop) { // 3단계: 로비 안내 (한 번에 하나)
+    if (META.maxLevel >= 1 && !tutSeen('pb')) { const [x, y] = tabTarget('hub'); tutHint('첫 클리어 보상으로 핀볼을 얻었어요! 핀볼 기계로 가 봐요', x, y, W/2, 800); }
+    else if (tutSeen('pb') && !tutSeen('equip')) { const [x, y] = tabTarget('balls'); tutHint('얻은 볼을 장착해요. 장착한 볼만 전투에 나와요', x, y, W/2, 800); }
+    else if (tutSeen('equip') && !tutSeen('char') && CHARS.some(c => c.id !== 'hero' && (META.chars[c.id].owned || META.chars[c.id].shards > 0))) { const [x, y] = tabTarget('chars'); tutHint('캐릭터 조각이 모였어요. 10개면 해금, 이후 조각은 강화 재료', x, y, W/2, 800); }
+    else if (autoPending() >= 1 && !tutSeen('collect')) tutHint('싸우지 않는 동안에도 핀볼이 쌓여요. 받아 가세요!', LB.collect.x + LB.collect.w/2, LB.collect.y + LB.collect.h/2, W/2, 700);
+    else if (META.maxLevel >= 2 && !tutSeen('raid')) tutHint('침략: 다른 유저의 캐릭터와 싸워요. 침략권은 30분마다 1개(최대 5). 이기면 살려줄지 처치할지 골라요', LB.raid.x + LB.raid.w/2, LB.raid.y + 20, W/2, 780);
+  }
+  if (m === 'select' && MS.phase === 'idle' && !tutSeen('pb')) tutHint('PUSH를 눌러 공을 쏘세요! 첫 판은 잭팟 확정', 360, 1072, W/2, 880);
+  if (m === 'balls' && !tutSeen('equip')) tutHint('볼을 눌러 장착하세요 (최대 8개). 장착한 볼만 전투에서 나와요', null, null, W/2, 1100);
+  if (m === 'prep' && !tutSeen('prep')) tutHint('이번 판에 처음부터 들고 갈 볼 2개를 고르세요. 캐릭터 볼은 항상 함께', null, null, W/2, 980);
+  if (m === 'chars' && !tutSeen('char')) tutHint('캐릭터마다 시작 볼·능력이 달라요. 조각 10개로 해금, 남는 조각으로 강화', null, null, W/2, 1100);
+}
+function draw() { drawMain(); if (TITLE.on) drawTitle(); else drawTut(); } // 타이틀은 항상 맨 위
 function drawMain() {
   if (S.mode === 'settings') { S.mode = SET.back; drawMain(); S.mode = 'settings'; drawSettings(); return; } // 설정 팝업: 아래 화면을 그린 위에 얹음
   if (S.mode === 'select' || S.mode === 'machine') { drawHub(); return; }
@@ -1519,7 +1562,7 @@ function drawMain() {
   if (S.mode === 'match') { drawMatch(); return; }
   if (S.mode === 'prep') { drawPrep(); return; }
   if (S.mode === 'balls') { drawBalls(); return; }
-  if (S.mode === 'chars') { drawChars(); return; }
+  if (S.mode === 'chars') { tutDone('char'); drawChars(); return; }
   ctx.save();
   if (S.shake > 0) ctx.translate(Math.round((Math.random() - .5)*S.shake), Math.round((Math.random() - .5)*S.shake)); // 화면 흔들림 (연출용이라 시드 난수 아님)
   drawBoard();
@@ -1599,7 +1642,7 @@ function drawControls() { // 조작 모드별 터치 UI
     const [kx, ky] = mv ? knob(mv) : [0, 0]; joyDraw(TAPJOY.x, TAPJOY.y, kx, ky, TAPJOY.r, '#ffffff', mv ? '' : '이동', !!mv);
     if (S.tgt) { const age = (performance.now() - S.tgt.t)/1000; if (age < .5) { const r = 18 + age*30; ctx.globalAlpha = 1 - age*2; ctx.strokeStyle = '#8ad8ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(S.tgt.x, S.tgt.y, r, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; } // 누른 자리 물결
       const a = S.tgt.a, cx = S.px + Math.cos(a)*300, cy = S.py + Math.sin(a)*300; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillStyle = '#8ad8ff'; for (let k = 0; k < 4; k++) ctx.fillRect(-k*6, -k*5 - 3, 6, k*10 + 6); ctx.restore(); } // 조준 각도 끝의 화살촉
-    else if (S.t < 6) uiTxt('조준할 곳을 누르세요', W/2, PMIN + 40, 24, '#8ad8ff');
+    else if (S.t < 6 && !S.tutRun) uiTxt('조준할 곳을 누르세요', W/2, PMIN + 40, 24, '#8ad8ff'); // 튜토리얼 중엔 말풍선이 대신 안내
   } else {
     if (mv) { const [kx, ky] = knob(mv); joyDraw(mv.x, mv.y, kx, ky, 70, '#ffffff', '', true); } else joyDraw(150, BOT - 130, 0, 0, 70, '#ffffff', '이동', false); // 손 떼면 자리 안내
     if (am) { const [kx, ky] = knob(am); joyDraw(am.x, am.y, kx, ky, 70, '#8ad8ff', '', true); } else joyDraw(W - 150, BOT - 130, 0, 0, 70, '#8ad8ff', '조준', false);
@@ -2188,7 +2231,7 @@ function launchOne() {
   const si = rollOne(MS.plan, MS.mult); MS.launched++; MS.pend = MS.plan.pb; MS.ups = MS.plan.ups; saveMeta();
   MS.balls.push({x:(LANE.x0 + LANE.x1)/2, y:944, slot:si}); MS.pushT = .12; // 오른쪽 아래에서 위로 발사
 }
-function finishMachine() { MS.phase = 'idle'; S.mode = 'select'; MS.counts = PINBALL.slots.map(() => 0); MS.mult = 1; MS.launched = 0; MS.disp = null; MS.pend = 0; MS.icons = []; MS.rew = []; MS.revealed = false; }
+function finishMachine() { if (MS.plan && MS.plan.tutJp) tutDone('pb'); MS.phase = 'idle'; S.mode = 'select'; MS.counts = PINBALL.slots.map(() => 0); MS.mult = 1; MS.launched = 0; MS.disp = null; MS.pend = 0; MS.icons = []; MS.rew = []; MS.revealed = false; }
 const cab2scr = (x, y) => [360 - 360*HUBK + x*HUBK, HUBY - 190*HUBK + y*HUBK];
 const XP_TARGET = [404, 54], PB_TARGET = [150, 1096], BALL_TAB = [tabCx('balls'), 1212], CHAR_TAB = [tabCx('chars'), 1212];
 function addXpIcons(nx, ny, v, mult = 1) { // 경험치 1점 = 아이콘 1개 (배율이 있으면 아이콘 하나가 mult점): 칸에서 튀어올라 경험치 바로 날아간다
@@ -2451,13 +2494,13 @@ const LB = {gear:{x:538, y:20, w:68, h:68}, lvl:{x:30, y:1000, w:320, h:140}, ra
 const hm = h => Math.floor(h) + '시간 ' + Math.floor(h%1*60) + '분';
 function lobbyTap(hit) {
   if (LOBBY.pop) {
-    if (hit(LB.ok)) { const n = LOBBY.pop.n; claimAuto(n); LOBBY.pend = (LOBBY.pend || 0) + n; pbBurst(360, 640, n, [142, 54], v => { LOBBY.pend = Math.max(0, LOBBY.pend - v); }); LOBBY.pop = null; } else if (!hit(LB.panel)) LOBBY.pop = null;
+    if (hit(LB.ok)) { tutDone('collect'); const n = LOBBY.pop.n; claimAuto(n); LOBBY.pend = (LOBBY.pend || 0) + n; pbBurst(360, 640, n, [142, 54], v => { LOBBY.pend = Math.max(0, LOBBY.pend - v); }); LOBBY.pop = null; } else if (!hit(LB.panel)) LOBBY.pop = null;
     return;
   }
   if (hit(LB.gear)) { openSettings(); return; }
   if (hit(LB.collect)) { const n = autoPending(); if (n >= 1) LOBBY.pop = {n, h:autoHours()}; else { LOBBY.msg = '아직 모인 핀볼이 없어요'; LOBBY.msgUntil = performance.now() + 1500; } }
   else if (hit(LB.lvl)) enterLevel(lvNext(), () => startLevel(lvNext()));
-  else if (hit(LB.raid)) { if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); }
+  else if (hit(LB.raid)) { tutDone('raid'); if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); }
 }
 function drawLobby() {
   ctx.drawImage(RUINS, 0, 0);
@@ -2597,7 +2640,7 @@ function prepTap(hit) {
   const pool = prepPool(), k = pool.findIndex((id, i) => hit(PREP_TILE(i)));
   if (k >= 0) togglePick(pool[k]);
   else if (hit(PREP_BACK)) { PREP.next = null; reset(); S.mode = 'lobby'; }
-  else if (hit(PREP_GO) && META.pick.length >= prepNeed()) { saveMeta(); const n = PREP.next; PREP.next = null; if (n) n(); }
+  else if (hit(PREP_GO) && META.pick.length >= prepNeed()) { tutDone('prep'); saveMeta(); const n = PREP.next; PREP.next = null; if (n) n(); }
 }
 function drawPrep() {
   const T = performance.now()/1000;
@@ -2820,7 +2863,7 @@ const K = {};
 const isTutorial = id => id === 1 && META.maxLevel === 0;
 function startLevel(id) {
   const tut = isTutorial(id); reset(id, tut); S.mode = 'play'; toast('레벨 ' + id + ' ' + S.level.name + ' · 웨이브 1 / ' + S.level.waves);
-  if (tut) { toast('이동: 화면 드래그 · 마우스 누르기 · 방향키'); toast('공은 자동으로 나가요. 돌아오는 공은 몸으로 받아요'); }
+  if (tut) { S.tutRun = true; S.tutStep = 0; S.tut0 = {x:S.px, y:S.py}; }
 }
 const enterLevel = (id, go) => isTutorial(id) ? go() : openPrep(go); // 튜토리얼은 출전 볼 선택을 건너뜀
 function startRaid(r) { reset(Object.assign(raidLevel(r), {lg:league()})); S.mode = 'play'; toast('침략! ' + r.name + ' · 제한 ' + RAID.time + '초'); }
