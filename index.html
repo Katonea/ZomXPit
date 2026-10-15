@@ -1963,13 +1963,7 @@ function buttons() {
     return [{label:'살려주기', sub:'핀볼 +' + RAID.sparePinball[t], theme:'green', act:() => raidVerdict('spare')}, {label:'처치하기', sub:'랜덤 볼 1개', theme:'red', act:() => raidVerdict('kill')}].map((b, i) => ({...b, x:RES.x + 40 + i*268, y:730, w:252, h:180}));
   }
   if (S.mode === 'result') {
-    const out = [], next = LEVELS[S.level.id];
-    if (S.level.raid) out.push({label:'다시 침략 ' + raidTickets() + '/' + RAIDT.max + (raidTickets() < RAIDT.max ? ' · ' + mmss(raidNextIn()) : ''), theme:'orange', off:raidTickets() < 1, act:() => openPrep(() => startMatch())}, {label:'로비로', theme:'purple', act:() => { reset(); S.mode = 'lobby'; }});
-    else {
-      if (S.result.win && next) out.push({label:'다음 레벨', theme:'orange', act:() => enterLevel(next.id, () => startLevel(next.id))});
-      out.push({label:'다시 하기', theme:S.result.win && next ? 'green' : 'orange', act:() => enterLevel(S.level.id, () => startLevel(S.level.id))}, {label:'로비로', theme:'purple', act:() => { reset(); S.mode = 'lobby'; }});
-    }
-    const P = RES, low = out.slice(1), bw = (P.w - 80 - (low.length - 1)*16)/Math.max(1, low.length);
+    const out = [{label:'로비로', theme:'orange', act:() => { reset(); S.mode = 'lobby'; }}]; // 클리어·실패·침략 모두 로비로만 (다음 레벨·다시 하기는 로비에서)
     return [{...out[0], main:true, x:P.x + 40, y:P.y + P.h - 216, w:P.w - 80, h:100}, ...low.map((b, i) => ({...b, x:P.x + 40 + i*(bw + 16), y:P.y + P.h - 100, w:bw, h:72}))];
   }
   return [];
@@ -2110,8 +2104,8 @@ function drawChars() {
     else { const f = fitWrap('시작: 무작위 볼 2종', 18, tw, 1, 900, 12); uiLabel(f.lines[0], tx, b.y + 94, f.size, UI.ink, 'left', 900); }
     uiWrap(c.desc, b.x + 16, b.y + 152, 17, b.w - 32, 2, '#6a5a8a', 'left', 700);
     if (st.owned) { const lv = st.lv || 0, max = lv >= PINBALL.charMaxLv, need = charUpNeed(st), ok = !max && st.shards >= need; // 강화: 레벨·조각 막대·강화 버튼
-      uiTxt('Lv ' + (lv + 1), b.x + 70, b.y + 24, 20, UI.gold); if (!max) uiBar(b.x + 14, b.y + b.h - 72, 118, 10, st.shards/need, ['#ffd23a', '#e8731a']);
-      uiBtn(charUpBtn(CHARS.findIndex(c => c.id === b.id)), max ? 'MAX' : ok ? '강화!' : st.shards + '/' + need, ok ? 'yellow' : 'gray', ok ? 20 : 16, !ok);
+      uiTxt('Lv ' + (lv + 1), b.x + 70, b.y + 24, 20, UI.gold); if (!max) { uiBar(b.x + 18, b.y + 100, 104, 24, st.shards/need, ['#ffd23a', '#e8731a']); uiTxt(Math.min(st.shards, need) + '/' + need, b.x + 70, b.y + 119, 16, '#fff'); } // 강화 조각 게이지 (글씨가 막대 안)
+      uiBtn(charUpBtn(CHARS.findIndex(c => c.id === b.id)), max ? 'MAX' : '강화', ok ? 'yellow' : 'gray', 20, !ok);
       if (on) { uiPill(b.x + b.w - 150, b.y + b.h - 58, 136, 44, '#4ac84a'); uiTxt('선택됨', b.x + b.w - 82, b.y + b.h - 27, 22); } else uiBtn({x:b.x + b.w - 150, y:b.y + b.h - 60, w:136, h:46}, '선택', 'orange', 22); }
     else { uiLock(b.x + 30, b.y + b.h - 36, 15); uiLabel('조각 ' + st.shards + '/' + PINBALL.shardsToUnlock, b.x + 52, b.y + b.h - 29, 17, UI.ink, 'left', 900); uiBar(b.x + 150, b.y + b.h - 46, 156, 20, st.shards/PINBALL.shardsToUnlock, ['#a8f06a', '#3f9a2a']); }
   }
