@@ -1954,21 +1954,32 @@ function uiSword(x, y, s) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI/
 function uiTurtle(x, y, s) { uiHero(x, y, s*.95, humanLook(META.sel), '', 0); } // 캐릭터 탭 아이콘: 지금 고른 캐릭터
 function uiLock(x, y, s) { ctx.beginPath(); ctx.arc(x, y - s*.2, s*.5, Math.PI, 0); ctx.strokeStyle = UI.ink; ctx.lineWidth = s*.34; ctx.stroke(); ctx.strokeStyle = '#d8d0e8'; ctx.lineWidth = s*.18; ctx.stroke(); uiPath(x - s*.7, y - s*.15, s*1.4, s*1.1, s*.2); ctx.fillStyle = '#ffd23a'; ctx.fill(); uiLine(UI.ink, s*.16); }
 function uiCheck(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = '#4ac84a'; ctx.fill(); uiLine(UI.ink, Math.max(3, r*.2)); ctx.beginPath(); ctx.moveTo(x - r*.45, y); ctx.lineTo(x - r*.1, y + r*.35); ctx.lineTo(x + r*.5, y - r*.35); ctx.strokeStyle = '#fff'; ctx.lineWidth = r*.28; ctx.stroke(); }
-function miniSlot(cx, cy, T) { // 핀볼 가운데 잭팟 칸: 작은 슬롯머신. 1.6초마다 레버 당김 → 릴 셋이 돌다 차례로 멈춤, 맨 위 램프 깜빡
-  const w = 76, h = 70, x = Math.round(cx - w/2 - 6), y = Math.round(cy - h/2), c = T % 1.6, pull = c < .18 ? c/.18 : c < .36 ? 1 - (c - .18)/.18 : 0;
-  pxBox(x, y, w, h, '#d8302a', {shade:'#a81a1a', light:'#ff6a5a', sh:2});                         // 몸통
-  ctx.fillStyle = Math.floor(T*6)%2 ? '#ffe14a' : '#ff9a3a'; ctx.fillRect(x + w/2 - 16, y - 8, 32, 10); ctx.fillStyle = UI.ink; ctx.fillRect(x + w/2 - 18, y - 10, 36, 2); // 램프
-  ctx.fillStyle = UI.ink; ctx.fillRect(x + 6, y + 14, w - 12, 30); ctx.fillStyle = '#ffd23a'; ctx.fillRect(x + 7, y + 15, w - 14, 28);
-  const SYM = ['#ff3a5a', '#3ab8ff', '#8ae04a', '#ffd23a'];
-  for (let i = 0; i < 3; i++) { const rx = x + 9 + i*20, spin = c > .2 && c < .7 + i*.18; ctx.fillStyle = '#fff6e0'; ctx.fillRect(rx, y + 17, 18, 24);
-    ctx.save(); ctx.beginPath(); ctx.rect(rx, y + 17, 18, 24); ctx.clip();
-    const off = spin ? (T*160)%16 : 0, base = spin ? Math.floor(T*10) : Math.floor(T/1.6) + 1; // 멈추면 셋이 같은 그림 (잭팟 느낌)
-    for (let k = -1; k <= 1; k++) { const sy = y + 29 + k*16 + off, col = SYM[((spin ? base + i + k : base + k)%4 + 4)%4]; ctx.fillStyle = col; ctx.fillRect(rx + 5, sy - 5, 8, 10); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(rx + 6, sy - 4, 3, 3); }
-    if (spin) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(rx, y + 17, 18, 24); } ctx.restore(); }
-  ctx.fillStyle = UI.ink; ctx.fillRect(x + 10, y + 50, w - 20, 10); ctx.fillStyle = '#ffd23a'; ctx.fillRect(x + 12, y + 52, w - 24, 6); // 동전 받이
-  const lx = x + w + 4, ly = y + 22 + pull*22; ctx.fillStyle = UI.ink; ctx.fillRect(lx - 2, y + 22, 8, 26); ctx.fillStyle = '#c8ccdc'; ctx.fillRect(lx, Math.min(ly, y + 22), 4, Math.abs(ly - (y + 22)) + 4); // 레버
-  ctx.fillStyle = UI.ink; ctx.beginPath(); ctx.arc(lx + 2, ly - 10, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#ff3a5a'; ctx.beginPath(); ctx.arc(lx + 2, ly - 10, 7, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(lx - 1, ly - 14, 3, 3);
-  ctx.fillStyle = UI.ink; ctx.fillRect(lx - 2, ly - 10, 8, 2);
+const SLOT_SYM = { // 잭팟 칸 릴 그림 7×7 도트: 좀비 머리·뇌·해골·핀볼·하트·보석
+  Z:{rows:['.GGGGG.', 'GGGGGGG', 'GRGGGRG', 'GGGGGGG', 'GKKKKKG', 'GKWKWKG', '.GGGGG.'], pal:{G:'#8ab84a', R:'#ff3a3a', K:'#2a1a20', W:'#f4f0e0'}},
+  B:{rows:['.PPpPP.', 'PPpPPpP', 'PpPPpPP', 'PPPpPPP', 'PpPPPpP', '.PPPPP.', '...PP..'], pal:{P:'#ff9ac0', p:'#d85a8a'}},
+  S:{rows:['.WWWWW.', 'WWWWWWW', 'WKKWKKW', 'WKKWKKW', 'WWWKWWW', '.WWWWW.', '.W.W.W.'], pal:{W:'#f4f0e0', K:'#2a1a20'}},
+  O:{rows:['..LLL..', '.LwLLL.', 'LwLLLLL', 'LLLLLLL', 'LLLLLLD', '.LLLLD.', '..DDD..'], pal:{L:'#c8ccdc', w:'#ffffff', D:'#8a8ea0'}},
+  H:{rows:['.RR.RR.', 'RrRRRRR', 'RRRRRRR', 'RRRRRRR', '.RRRRR.', '..RRR..', '...R...'], pal:{R:'#e8203a', r:'#ff9aa8'}},
+  D:{rows:['...C...', '..CcC..', '.CcCCC.', 'CCCCCCC', '.CCCCC.', '..CCC..', '...C...'], pal:{C:'#3ab8ff', c:'#c8f0ff'}},
+};
+const SLOT_ORDER = ['Z', 'B', 'S', 'O', 'H', 'D'];
+let SLOT_CV = null;
+function miniSlot(cx, cy, T) { // 핀볼 가운데 잭팟 칸: 도트 슬롯머신(30×28칸, 3배). 1.6초마다 릴 셋이 돌다 차례로 멈춰 좀비 머리 3개, 위 경광등 깜빡
+  const cv = SLOT_CV || (SLOT_CV = mkCanvas(30, 28)), g = cv.getContext('2d'), INK = UI.ink, p = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  const box = (x, y, w, h, c, lt, dk) => { p(x, y, w, h, INK); p(x + 1, y + 1, w - 2, h - 2, c); p(x + 1, y + 1, w - 2, 1, lt); p(x + 1, y + h - 2, w - 2, 1, dk); };
+  const sym = (k, x, y) => SLOT_SYM[k].rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.') p(x + i, y + j, 1, 1, SLOT_SYM[k].pal[ch]); }));
+  g.clearRect(0, 0, 30, 28);
+  box(0, 4, 30, 24, '#d8302a', '#ff6a5a', '#a81a1a'); p(11, 0, 8, 5, INK); p(12, 1, 6, 3, Math.floor(T*6)%2 ? '#ffe14a' : '#ff8a2a'); // 몸통 + 경광등
+  box(2, 7, 26, 13, '#ffd23a', '#fff0a0', '#c8901a');
+  const c = T % 1.6, x0 = 4, y0 = 9; p(x0 - 1, y0 - 1, 25, 11, INK);
+  for (let i = 0; i < 3; i++) { const rx = x0 + i*8, spin = c < .5 + i*.2; p(rx, y0, 7, 9, '#fff6e0');
+    g.save(); g.beginPath(); g.rect(rx, y0, 7, 9); g.clip();
+    const off = spin ? Math.floor(T*60)%8 : 0, base = Math.floor(T*8);
+    for (let k = -1; k <= 1; k++) sym(spin ? SLOT_ORDER[(base + i*2 + k + 60)%6] : k ? SLOT_ORDER[(i + k + 6)%6] : 'Z', rx, y0 + 1 + k*8 + off);
+    g.restore(); }
+  p(x0 - 1, y0 + 4, 1, 1, '#ff3a5a'); p(x0 + 23, y0 + 4, 1, 1, '#ff3a5a');                       // 당첨 줄
+  p(7, 22, 16, 4, INK); p(8, 23, 14, 2, '#ffd23a');                                                // 동전 받이
+  const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(cv, Math.round(cx - 45), Math.round(cy - 42), 90, 84); ctx.imageSmoothingEnabled = sm;
 }
 function uiGift(x, y, s) { // 선물 상자 (분홍 상자 + 금 리본)
   const lw = Math.max(3, s*.14);
