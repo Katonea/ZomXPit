@@ -183,27 +183,27 @@ const FORM_GAP = {x:44, y:62}; // 몬스터 지름(40)에 맞춘 빽빽한 간�
 // 예상 플레이어 레벨(첫 도전 시점, 레벨당 첫 클리어+실패 1회+침략 1회) ≈ L1:1 L2:3 L3:5 L4:7 L5:8 L6:10 L7:11 L8:12 L9:13 L10:15, 볼 레벨 L1~3:1 L4~7:2 L8~10:3
 // 봇(game.bot) 클리어율 목표 ≈ 60~90%, L10·L20(마지막 벽)만 약 35%. 보스전 L1~4 약 20~30초, L5~10 약 55~65초
 const LEVELS = [
-  {id:1,  name:'폐허 입구',   hpMul:.80, bossMul:.35, dmgMul:0.6, waves:4, midAfter:2, boss:'butcher',  mix:{knight:1}, forms:['row', 'block']},
-  {id:2,  name:'기는 자의 골목', hpMul:1.08, bossMul:.60, dmgMul:0.75, waves:5, midAfter:2, boss:'butcher',  mix:{knight:3, boar:1}, forms:['row', 'wedge']},
-  {id:3,  name:'저격 옥상', hpMul:1.21, bossMul:.75, dmgMul:0.85, waves:5, midAfter:2, boss:'butcher',  mix:{knight:3, boar:1, archer:1}, forms:['row', 'wedge', 'block']},
-  {id:4,  name:'바리케이드', hpMul:1.58, bossMul:.90, dmgMul:0.9, waves:5, midAfter:2, boss:'butcher',  mix:{knight:2, shield:2, archer:1, boar:1}, forms:['wall', 'block']},
-  {id:5,  name:'폐병원', hpMul:1.84, bossMul:1.60, dmgMul:1.25, waves:6, midAfter:3, boss:'paladin',  mix:{knight:3, archer:1, shield:1, priest:1, boar:1}},
-  {id:6,  name:'폭탄 공장', hpMul:2.01, bossMul:1.80, dmgMul:1.35, waves:6, midAfter:3, boss:'paladin',  mix:{knight:3, bomber:2, boar:1, archer:1}, forms:['wedge', 'row']},
-  {id:7,  name:'검문소',    hpMul:2.18, bossMul:1.65, dmgMul:1.4, waves:6, midAfter:3, boss:'paladin',  mix:{knight:2, archer:2, shield:1, priest:1, boar:1}, forms:['wall', 'row']},
-  {id:8,  name:'진압 방벽', hpMul:2.58, bossMul:1.65, dmgMul:1.45, waves:6, midAfter:3, boss:'paladin',  mix:{shield:2, knight:2, bomber:1, priest:1, boar:1}, forms:['block', 'wall']},
+  {id:1,  name:'폐허 입구',   hpMul:.80, bossMul:0.35, dmgMul:0.6, waves:4, midAfter:2, boss:'butcher',  mix:{knight:1}, forms:['row', 'block']},
+  {id:2,  name:'기는 자의 골목', hpMul:1.08, bossMul:0.52, dmgMul:0.75, waves:5, midAfter:2, boss:'captain',  mix:{knight:3, boar:1}, forms:['row', 'wedge']},
+  {id:3,  name:'저격 옥상', hpMul:1.21, bossMul:0.33, dmgMul:0.85, waves:5, midAfter:2, boss:'digger',  mix:{knight:3, boar:1, archer:1}, forms:['row', 'wedge', 'block']},
+  {id:4,  name:'바리케이드', hpMul:1.58, bossMul:0.33, dmgMul:0.9, waves:5, midAfter:2, boss:'paladin',  mix:{knight:2, shield:2, archer:1, boar:1}, forms:['wall', 'block']},
+  {id:5,  name:'폐병원', hpMul:1.84, bossMul:1.60, dmgMul:1.25, waves:6, midAfter:3, boss:'archmage',  mix:{knight:3, archer:1, shield:1, priest:1, boar:1}},
+  {id:6,  name:'폭탄 공장', hpMul:2.01, bossMul:4.85, dmgMul:1.35, waves:6, midAfter:3, boss:'butcher',  mix:{knight:3, bomber:2, boar:1, archer:1}, forms:['wedge', 'row']},
+  {id:7,  name:'검문소',    hpMul:2.18, bossMul:3.85, dmgMul:1.4, waves:6, midAfter:3, boss:'captain',  mix:{knight:2, archer:2, shield:1, priest:1, boar:1}, forms:['wall', 'row']},
+  {id:8,  name:'진압 방벽', hpMul:2.58, bossMul:1.93, dmgMul:1.45, waves:6, midAfter:3, boss:'digger',  mix:{shield:2, knight:2, bomber:1, priest:1, boar:1}, forms:['block', 'wall']},
   {id:9,  name:'총공세',    hpMul:2.91, bossMul:1.70, dmgMul:1.5, waves:6, midAfter:3, boss:'paladin', mix:{boar:2, knight:3, archer:2, shield:1, priest:1, bomber:2}},
-  {id:10, name:'정유소',    hpMul:2.3, bossMul:.7, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{boar:2, knight:3, archer:1, shield:1, priest:1, bomber:1, mage:1}},
+  {id:10, name:'정유소',    hpMul:2.3, bossMul:0.70, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{boar:2, knight:3, archer:1, shield:1, priest:1, bomber:1, mage:1}},
   // 11~20 (2026-10-14): 레벨마다 2단계 좀비 1종씩 등장 → 섞임. 보스는 탱크 3종을 돌려 씀
-  {id:11, name:'공사장',      hpMul:2.45, bossMul:1.35, dmgMul:1.05, waves:7, midAfter:3, boss:'digger',  mix:{knight:3, helmet:3, archer:1, boar:1}, forms:['block', 'wall']},
-  {id:12, name:'마라톤 길',   hpMul:2.6, bossMul:1.7, dmgMul:1.1, waves:7, midAfter:3, boss:'paladin',  mix:{runner:4, knight:2, helmet:1, archer:1, priest:1}, forms:['row', 'wedge']},
-  {id:13, name:'교도소',      hpMul:2.75, bossMul:1.05, dmgMul:1.15, waves:7, midAfter:3, boss:'archmage', mix:{convict:3, knight:2, shield:2, archer:1}, forms:['wall', 'block']},
-  {id:14, name:'하수 처리장', hpMul:2.9, bossMul:1.3, dmgMul:1.1, waves:7, midAfter:3, boss:'digger',  mix:{fatty:2, knight:3, runner:2, priest:1, bomber:1}},
-  {id:15, name:'응급실',      hpMul:3.05, bossMul:1.6, dmgMul:1.25, waves:7, midAfter:3, boss:'paladin',  mix:{syringe:2, priest:1, knight:3, helmet:2, boar:1}},
-  {id:16, name:'고속도로',    hpMul:3.2, bossMul:1.7, dmgMul:1.45, waves:7, midAfter:3, boss:'archmage', mix:{runner:4, boar:3, bomber:2, archer:1}, forms:['row', 'wedge']},
-  {id:17, name:'철거 현장',   hpMul:3.35, bossMul:1.8, dmgMul:1.35, waves:7, midAfter:3, boss:'digger',  mix:{helmet:3, fatty:2, bomber:2, convict:1, archer:1}, forms:['block', 'wall']},
-  {id:18, name:'감옥 폭동',   hpMul:3.5, bossMul:2.2, dmgMul:1.5, waves:7, midAfter:3, boss:'paladin',  mix:{convict:3, shield:2, runner:2, syringe:1, knight:2}},
-  {id:19, name:'오염 지대',   hpMul:3.65, bossMul:.45, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{fatty:2, syringe:2, mage:1, helmet:2, runner:2, priest:1, spitter:1}},
-  {id:20, name:'폐허의 왕좌', hpMul:3.8, bossMul:1.2, dmgMul:1.4, waves:8, midAfter:4, boss:'paladin',  mix:{runner:2, helmet:2, fatty:1, convict:2, syringe:1, shield:1, boar:1, bomber:1, mage:1, spitter:1}},
+  {id:11, name:'공사장',      hpMul:2.45, bossMul:3.12, dmgMul:1.05, waves:7, midAfter:3, boss:'butcher',  mix:{knight:3, helmet:3, archer:1, boar:1}, forms:['block', 'wall']},
+  {id:12, name:'마라톤 길',   hpMul:2.6, bossMul:3.97, dmgMul:1.1, waves:7, midAfter:3, boss:'captain',  mix:{runner:4, knight:2, helmet:1, archer:1, priest:1}, forms:['row', 'wedge']},
+  {id:13, name:'교도소',      hpMul:2.75, bossMul:1.23, dmgMul:1.15, waves:7, midAfter:3, boss:'digger', mix:{convict:3, knight:2, shield:2, archer:1}, forms:['wall', 'block']},
+  {id:14, name:'하수 처리장', hpMul:2.9, bossMul:1.11, dmgMul:1.1, waves:7, midAfter:3, boss:'paladin',  mix:{fatty:2, knight:3, runner:2, priest:1, bomber:1}},
+  {id:15, name:'응급실',      hpMul:3.05, bossMul:1.60, dmgMul:1.25, waves:7, midAfter:3, boss:'archmage',  mix:{syringe:2, priest:1, knight:3, helmet:2, boar:1}},
+  {id:16, name:'고속도로',    hpMul:3.2, bossMul:4.58, dmgMul:1.45, waves:7, midAfter:3, boss:'butcher', mix:{runner:4, boar:3, bomber:2, archer:1}, forms:['row', 'wedge']},
+  {id:17, name:'철거 현장',   hpMul:3.35, bossMul:3.60, dmgMul:1.35, waves:7, midAfter:3, boss:'captain',  mix:{helmet:3, fatty:2, bomber:2, convict:1, archer:1}, forms:['block', 'wall']},
+  {id:18, name:'감옥 폭동',   hpMul:3.5, bossMul:2.57, dmgMul:1.5, waves:7, midAfter:3, boss:'digger',  mix:{convict:3, shield:2, runner:2, syringe:1, knight:2}},
+  {id:19, name:'오염 지대',   hpMul:3.65, bossMul:0.45, dmgMul:1.0, waves:7, midAfter:3, boss:'paladin', mix:{fatty:2, syringe:2, mage:1, helmet:2, runner:2, priest:1, spitter:1}},
+  {id:20, name:'폐허의 왕좌', hpMul:3.8, bossMul:1.20, dmgMul:1.4, waves:8, midAfter:4, boss:'archmage',  mix:{runner:2, helmet:2, fatty:1, convict:2, syringe:1, shield:1, boar:1, bomber:1, mage:1, spitter:1}},
 ];
 const waveLen = w => w < 2 ? 20 : 25;                  // 웨이브 1~2는 20초, 이후 25초
 const waveOf = (L, w) => L.waveLen || waveLen(w);        // 성 침략 레벨은 웨이브가 짧다
@@ -2431,7 +2431,7 @@ function arriveXp(val = 1) {
 function revealGot(sp) { // 릴이 멈추면 보상이 카드로 튀어나와 잠시 보였다가 목적지(보유 핀볼·볼 탭·캐릭터 탭)로 날아간다
   MS.revealed = true; const n = sp.got.length;
   sp.got.forEach((g, k) => { const gv = g.kind === 'pb' ? g.v : g.dupPb || 0; MS.rew.push({g, gv, x:W/2 + (k - (n - 1)/2)*(n > 2 ? 200 : 240), y:800, t:-k*.2, hold:.8, fly:.6}); });
-  sfx(sp.triple ? 'gift' : 'coin');
+  sfx(sp.triple ? 'gift' : 'coin'); if (!sp.triple) buzz([20, 30, 40]);
 }
 function arriveRew(r) {
   const d = r.g.kind === 'ball' ? BALL_TAB : r.g.kind === 'pb' ? PB_TARGET : CHAR_TAB;
@@ -2464,7 +2464,10 @@ function updateMachine(dt) {
     MS.settleT += dt;
     if (!MS.icons.length && MS.settleT > .6) { if (MS.plan.spins.length) { MS.phase = 'spin'; MS.spin = 0; MS.spinT = 0; MS.revealed = false; MS.rew = []; } else finishMachine(); }
   } else if (MS.phase === 'spin') {
-    MS.spinT += dt; const end = spinStops(MS.plan.spins[MS.spin])[2];
+    const prevT = MS.spinT; MS.spinT += dt; const end = spinStops(MS.plan.spins[MS.spin])[2], stops = spinStops(MS.plan.spins[MS.spin]), sp0 = MS.plan.spins[MS.spin];
+    if (prevT < GIFT_OPEN && MS.spinT >= GIFT_OPEN) { sfx('launch'); buzz(30); }                                        // 레버 당김
+    if (MS.spinT >= GIFT_OPEN && MS.spinT < end && Math.floor(MS.spinT/.07) !== Math.floor(prevT/.07)) { sfx('click', .05); tick(8); } // 도는 소리
+    stops.forEach((t, i) => { if (prevT < t && MS.spinT >= t) { sfx('reel'); buzz(i === 2 ? 45 : 25); if (i === 1 && sp0.reels[0] === sp0.reels[1]) sfx('bump'); } }); // 릴이 멈출 때 (앞 두 개가 같으면 긴장음)
     if (MS.spinT > end && !MS.revealed) revealGot(MS.plan.spins[MS.spin]);
     if (MS.revealed && MS.rew.every(r => r.done) && !PBFX.list.length && MS.spinT > end + .3) nextSpin();
   }
@@ -2889,6 +2892,7 @@ const SFX = {
   hurt:t => tone(140, t, .2, 'sawtooth', .4, AUD.sg, -70),
   rise:t => { tone(70, t, .35, 'sawtooth', .35, AUD.sg, -20); tone(150, t + .25, .12, 'square', .2, AUD.sg, 120); }, // 흙 뚫고 솟음: 낮은 우르릉 + 퍽
   block:t => { tone(1400, t, .05, 'square', .22, AUD.sg, -500); tone(260, t, .09, 'triangle', .3, AUD.sg, -60); }, // 방패에 막힘: 쨍 + 둔탁
+  reel:t => { tone(180, t, .08, 'square', .3, AUD.sg, -80); tone(90, t + .02, .1, 'triangle', .35, AUD.sg); }, // 잭팟 릴 멈춤: 철컥
   bump:t => tone(520, t, .1, 'triangle', .3, AUD.sg, 200),
   coin:t => { tone(988, t, .05, 'square', .25, AUD.sg); tone(1319, t + .06, .12, 'square', .25, AUD.sg); },
   gift:t => arp([784, 988, 1175, 1568, 1976], t, .06, 'sine', .35, .16),
