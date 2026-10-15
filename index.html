@@ -296,7 +296,7 @@ function loadMeta() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; Object.assign(m, s, {chars:Object.assign(m.chars, s.chars || {})}); } catch (e) { /* 손상·차단: 새로 시작 */ }
   if (m.gold) m.pinball = (m.pinball || 0) + Math.floor(m.gold/100); delete m.gold; // 골드 폐지: 옛 저장의 골드는 100골드 = 핀볼 1개로 환산
   for (const k of ['equip', 'equipped', 'uid', 'pbLv', 'pbXp']) delete m[k]; // 장비·핀볼 레벨 제거 이전 저장
-  m.set = Object.assign({sfx:.8, music:.6, vib:1, ctrl:'stick'}, m.set);
+  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); if (!m.set.ctrlPicked) m.set.ctrl = 'tap'; // 직접 고른 적 없으면 탭 조준 (예전 기본값 stick 저장분도)
   m.deck = m.deck.filter(id => m.bag[id]).slice(0, DECK_MAX);
   return m;
 }
@@ -1106,7 +1106,7 @@ function shotProps(b) {
     pierce:b.evo === 'lance' ? 99 : b.fns.includes('pierce') ? Math.round(fv('pierce', E).n) : 0, ric:b.fns.includes('ricochet') ? Math.round(fv('ricochet', E).n) : 0, spdMul:1 + sw.spd};
 }
 // 조준: 조준 스틱을 누르는 중이면 그 방향 > 수동 모드면 마지막 스틱 방향 또는 마우스 커서 > 자동이면 가장 가까운 적
-const ctrlMode = () => (META.set && META.set.ctrl) || 'stick';
+const ctrlMode = () => (META.set && META.set.ctrl) || 'tap'; // 기본 = 탭 조준
 function aimAngle() {
   if (ctrlMode() === 'tap' && S.tgt) return S.tgt.a; // 탭 조준: 누른 순간의 각도를 그대로 유지 (이동해도 방향이 바뀌지 않음)
   if ((S.aimHold || !S.autoAim) && S.aimDir != null) return S.aimDir;
@@ -2718,7 +2718,7 @@ function settingsTap(x, y, hit) {
     if (hit(SET_BAR(r))) { setVol(r.key, Math.round((x - 200)/360*10)/10); return; }
     if (hit(SET_ICON(r))) { setVol(r.key, META.set[r.key] > 0 ? 0 : r.def); return; }
   }
-  for (const c of SET_CTRL) if (hit(c)) { META.set.ctrl = c.id; saveMeta(); S.tgt = null; S.aimDir = null; return; }
+  for (const c of SET_CTRL) if (hit(c)) { META.set.ctrl = c.id; META.set.ctrlPicked = true; saveMeta(); S.tgt = null; S.aimDir = null; return; }
   if (hit(SET_VIB)) { META.set.vib = META.set.vib === 0 ? 1 : 0; saveMeta(); buzz(30); return; }
   if (hit(SET_BTN1)) { closeSettings(); return; }
   if (hit(SET_BTN2)) {
