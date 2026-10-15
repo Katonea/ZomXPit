@@ -305,7 +305,8 @@ function loadMeta() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; Object.assign(m, s, {chars:Object.assign(m.chars, s.chars || {})}); } catch (e) { /* 손상·차단: 새로 시작 */ }
   if (m.gold) m.pinball = (m.pinball || 0) + Math.floor(m.gold/100); delete m.gold; // 골드 폐지: 옛 저장의 골드는 100골드 = 핀볼 1개로 환산
   for (const k of ['equip', 'equipped', 'uid', 'pbLv', 'pbXp']) delete m[k]; // 장비·핀볼 레벨 제거 이전 저장
-  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); m.tut = Object.assign({seen:{}}, m.tut); // 튜토리얼 본 기록 if (!m.set.ctrlPicked) m.set.ctrl = 'tap'; // 직접 고른 적 없으면 탭 조준 (예전 기본값 stick 저장분도)
+  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); m.tut = Object.assign({seen:{}}, m.tut); // 튜토리얼 본 기록
+  if (!m.set.ctrlPicked) m.set.ctrl = 'stick'; // 직접 고른 적 없으면 좌우 스틱
   m.deck = m.deck.filter(id => m.bag[id]).slice(0, DECK_MAX);
   return m;
 }
@@ -1208,7 +1209,7 @@ function shotProps(b) {
     pierce:b.evo === 'lance' ? 99 : b.fns.includes('pierce') ? Math.round(fv('pierce', E).n) : 0, ric:b.fns.includes('ricochet') ? Math.round(fv('ricochet', E).n) : 0, spdMul:1 + sw.spd};
 }
 // 조준: 조준 스틱을 누르는 중이면 그 방향 > 수동 모드면 마지막 스틱 방향 또는 마우스 커서 > 자동이면 가장 가까운 적
-const ctrlMode = () => (META.set && META.set.ctrl) || 'tap'; // 기본 = 탭 조준
+const ctrlMode = () => (META.set && META.set.ctrl) || 'stick'; // 기본 = 좌우 스틱
 function aimAngle() {
   if (ctrlMode() === 'tap' && S.tgt) return S.tgt.a; // 탭 조준: 누른 순간의 각도를 그대로 유지 (이동해도 방향이 바뀌지 않음)
   if ((S.aimHold || !S.autoAim) && S.aimDir != null) return S.aimDir;
@@ -1606,13 +1607,12 @@ function drawWall(x0, w) { // 보드 밖 무너진 붉은 벽돌 벽 (군데군�
   const e = x0 === 0 ? w - 8 : x0; ctx.fillStyle = '#5a4636'; ctx.fillRect(e, TOP, 8, BOT - TOP);
   for (let y = TOP; y < BOT; y += 14) { ctx.fillStyle = (y/14)%3 ? '#8a6a4a' : '#7a3a2c'; ctx.fillRect(e + ((y/14)%2)*3, y, 5, 6); }
 }
-function drawDeck() { // 보드 아래 조이스틱 받침대: 철망 울타리 + 기둥·가로대 + 해골 경고판 (4px 도트, 보드 밖이라 좀비·공·주인공이 못 들어옴)
+function drawDeck() { // 보드 아래 조이스틱 받침대: 철망 울타리 + 기둥·가로대 (4px 도트, 보드 밖이라 좀비·공·주인공이 못 들어옴)
   const y0 = BOT + 8, h = SLOTY + 8 - y0, INK = UI.ink, G = 4, q = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x/G)*G, Math.round(y/G)*G, Math.max(G, Math.round(w/G)*G), Math.max(G, Math.round(hh/G)*G)); };
   q(0, y0, W, h, '#120a18'); ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, h); ctx.clip(); ctx.strokeStyle = '#6a6e7a'; ctx.lineWidth = 4;
   for (let x = -h; x < W + h; x += 28) { ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x + h, y0 + h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + h, y0); ctx.lineTo(x, y0 + h); ctx.stroke(); } ctx.restore(); // 마름모 철망
   for (let x = 40; x < W; x += 160) { q(x, y0 - 8, 16, h + 8, INK); q(x + 4, y0 - 8, 8, h + 8, '#9aa0ac'); }                 // 기둥
   q(0, y0, W, 8, '#9aa0ac'); q(0, y0, W, 4, INK);                                                                         // 위 가로대
-  q(W - 150, y0 + 30, 100, 64, INK); q(W - 146, y0 + 34, 92, 56, '#ffd23a'); q(W - 116, y0 + 44, 32, 24, '#f4f0e0'); q(W - 112, y0 + 52, 8, 8, INK); q(W - 96, y0 + 52, 8, 8, INK); q(W - 108, y0 + 68, 24, 8, '#f4f0e0'); // 해골 경고판
   const g = ctx.createRadialGradient(W/2, y0 + h/2, 20, W/2, y0 + h/2, 200); g.addColorStop(0, 'rgba(10,4,20,.45)'); g.addColorStop(1, 'rgba(10,4,20,0)'); ctx.fillStyle = g; ctx.fillRect(0, y0, W, h); // 조이스틱 자리는 어둡게
 }
 function drawBoard() {
@@ -3096,7 +3096,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => K[e.key] = false);
 function pt(p) { const r = cv.getBoundingClientRect(); return [(p.clientX - r.left)*W/r.width, (p.clientY - r.top)*H/r.height]; }
 const GEAR = {x:12, y:TOP + 38, w:56, h:52}; // 전투 중 설정 버튼 (왼쪽 벽 쪽)
-const AIM_BTN = {x:W - 150, y:TOP + 30, w:134, h:48}; // 전투 중 조준 모드 전환 버튼
+const AIM_BTN = {x:W - 150, y:BOT - 58, w:134, h:48}; // 전투 중 조준 모드 전환 버튼 (오른쪽 울타리 바로 위)
 function tap(x, y) {
   audInit(); // 브라우저 정책상 첫 터치 때 소리를 켠다
   if (TUTSHOWN.length) { META.tut.off = META.tut.off || {}; for (const t of TUTSHOWN) META.tut.off[t] = 1; TUTSHOWN = []; saveMeta(); } // 안내 문구는 아무 데나 누르면 닫힘 (누른 동작은 그대로 처리)
