@@ -1620,7 +1620,14 @@ function drawTut() {
   if (m === 'prep' && !tutSeen('prep')) tutHint('이번 판에 처음부터 들고 갈 볼 2개를 고르세요. 캐릭터 볼은 항상 함께', null, null, W/2, 980);
   if (m === 'chars' && !tutSeen('char')) tutHint('캐릭터마다 시작 볼·능력이 달라요. 조각 10개로 해금, 남는 조각으로 강화', null, null, W/2, 1100);
 }
-function draw() { drawMain(); if (TITLE.on) drawTitle(); else drawTut(); } // 타이틀은 항상 맨 위
+let PBPIX = null;
+function pixelate(y0, y1, k) { // 화면 띠(y0~y1)를 1/k로 줄였다가 최근접 확대 → 원·그라데이션까지 도트 (핀볼 화면, 시안 1: 3배)
+  const cv = ctx.canvas, sy = cv.height/H, sx = cv.width/W, sw = Math.ceil(W/k), sh = Math.ceil((y1 - y0)/k);
+  if (!PBPIX || PBPIX.width !== sw || PBPIX.height !== sh) PBPIX = mkCanvas(sw, sh);
+  const g = PBPIX.getContext('2d'); g.imageSmoothingEnabled = true; g.clearRect(0, 0, sw, sh); g.drawImage(cv, 0, y0*sy, cv.width, (y1 - y0)*sy, 0, 0, sw, sh);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(PBPIX, 0, 0, sw, sh, 0, y0*sy, sw*k*sx, sh*k*sy); ctx.restore();
+}
+function draw() { drawMain(); if (!TITLE.on && S.mode === 'select') pixelate(99, 990, 3); if (TITLE.on) drawTitle(); else drawTut(); } // 타이틀은 항상 맨 위
 function drawMain() {
   if (S.mode === 'settings') { S.mode = SET.back; drawMain(); S.mode = 'settings'; drawSettings(); return; } // 설정 팝업: 아래 화면을 그린 위에 얹음
   if (S.mode === 'select' || S.mode === 'machine') { drawHub(); return; }
@@ -2480,7 +2487,6 @@ function drawCabinet() {
     uiPath(x + 5, MB.slotY, SLOT_W - 10, MB.slotH, 14); const sg = ctx.createLinearGradient(0, MB.slotY, 0, MB.slotY + MB.slotH); sg.addColorStop(0, jp ? '#ffb43a' : '#8a55e8'); sg.addColorStop(1, jp ? '#e8731a' : '#4a2394'); ctx.fillStyle = sg; ctx.fill(); uiLine(UI.ink, 4);
     if (jp) miniSlot(cxs, MB.slotY + MB.slotH/2 + 2, performance.now()/1000);
     else { uiGem(cxs, MB.slotY + 38, 16 + s.v*1.6); uiTxt('EXP +' + s.v, cxs, MB.slotY + 88, 20, '#fff'); }
-    uiLabel(s.w + '%', cxs, MB.slotY + MB.slotH + 20, 15, '#fff', 'center', 700);
     if (MS.flash && MS.flash[i] > 0) { ctx.globalAlpha = MS.flash[i]/.35*.7; uiPath(x + 5, MB.slotY, SLOT_W - 10, MB.slotH, 14); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1; } // 들어간 칸 번쩍
     if (MS.counts[i]) uiTxt('×' + MS.counts[i], cxs, MB.slotY - 14, 32, UI.gold);
   });
