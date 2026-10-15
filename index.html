@@ -122,7 +122,7 @@ function gainExp(n) { META.plv = META.plv || 1; META.pxp = (META.pxp || 0) + n; 
 function buildChar(sel, tut) { // 선택 캐릭터 + 플레이어 레벨 + 장착 볼 = 이번 판 능력치
   const id = CHAR[sel] ? sel : 'hero', c = CHAR[id], P = plvStats();
   let start = c.start;
-  if (start === 'random2') { const ks = Object.keys(FN), a = ks.splice(Math.floor(rand()*ks.length), 1)[0], b = ks[Math.floor(rand()*ks.length)]; start = [[a], [b]]; }
+  if (start === 'random2') { const dk = (META.deck || []).filter(b => FN[b]), ks = dk.length >= 2 ? dk.slice() : Object.keys(FN), a = ks.splice(Math.floor(rand()*ks.length), 1)[0], b = ks[Math.floor(rand()*ks.length)]; start = [[a], [b]]; }
   const own = start.flat(), pool = (META.deck || []).filter(b => FN[b] && !own.includes(b));
   const pick = tut ? [] : (META.pick ? META.pick.filter(b => pool.includes(b)) : pool).slice(0, 2); // 튜토리얼(레벨 1 첫 도전)은 캐릭터 볼만 // 입장 때 고른 2개 (고른 적 없으면 장착 볼 앞에서 2개)
   start = [...start, ...pick.map(b => [b])];
@@ -729,7 +729,7 @@ function buildChoices() {
   for (const b of S.balls) if (b.lv < RULE.maxLv) rest.push({type:'up', b});
   if (S.balls.length + Object.keys(S.items || {}).length < RULE.slots) { // 볼 + 아이템이 칸 8개를 나눠 씀
     const owned = S.balls.flatMap(b => b.fns);
-    for (const id in FN) if (!owned.includes(id) && META.bag && META.bag[id]) rest.push({type:'new', id}); // 새 볼은 보유한 볼 중에서
+    for (const id of META.deck || []) if (FN[id] && !owned.includes(id)) rest.push({type:'new', id}); // 새 볼은 장착한(덱) 볼 중에서만
   }
   rest.forEach(c => { c.k = rand(); }); rest.sort((a, b) => a.k - b.k); // 셔플 (끝에서 꺼냄)
   const out = [];
@@ -791,45 +791,45 @@ function nextCard() {
 const pc = n => Math.round(n*100) + '%';
 const ITEM = {
   magnet:{name:'자석', col:'#e8483a', v:[60, 90, 120], d:v => '획득 범위 +' + v + ', 공 받는 범위 +' + Math.round(v/15)},
-  feet:{name:'날쌘 발', col:'#3a96f0', v:[.1, .15, .2], d:v => '이동 속도 +' + pc(v)},
-  feather:{name:'빛나는 깃털', col:'#6ab0e0', v:[.12, .18, .25], d:v => '공 속도 +' + pc(v)},
-  plate:{name:'흉갑', col:'#8a90a8', v:[.1, .15, .2], d:v => '받는 피해 -' + pc(v)},
-  onion:{name:'썩은 양파', col:'#9a7ac8', v:[.5, .75, 1], d:v => '주변 적에게 초당 공격력 ' + pc(v) + ' 피해'},
-  sword:{name:'흡혈검', col:'#c8302a', v:[.5, .8, 1.2], d:v => '처치할 때마다 HP +' + v},
+  feet:{name:'날쌘 발', col:'#3a96f0', v:[.06, .09, .12], d:v => '이동 속도 +' + pc(v)},
+  feather:{name:'빛나는 깃털', col:'#6ab0e0', v:[.08, .12, .16], d:v => '공 속도 +' + pc(v)},
+  plate:{name:'흉갑', col:'#8a90a8', v:[.06, .1, .14], d:v => '받는 피해 -' + pc(v)},
+  onion:{name:'썩은 양파', col:'#9a7ac8', v:[.2, .3, .4], d:v => '주변 적에게 초당 공격력 ' + pc(v) + ' 피해'},
+  sword:{name:'흡혈검', col:'#c8302a', v:[.3, .5, .8], d:v => '처치할 때마다 HP +' + v},
   goblet:{name:'넘치는 술잔', col:'#d8a030', v:[.2, .3, .4], d:v => '넘친 회복의 ' + pc(v) + '를 보호막으로'},
-  thorns:{name:'가시 왕관', col:'#b8862a', v:[2, 3, 4], d:v => '맞으면 가까운 적 ' + v + '마리 처치'},
-  collar:{name:'가시 목걸이', col:'#7a5a4a', v:[3, 4.5, 6], d:v => '처음 다가온 적에게 공격력 ' + pc(v) + ' 피해'},
-  rattle:{name:'아기 딸랑이', col:'#ff9ac8', v:[1, 2, 3], d:v => '일반 볼 +' + v + '발, 조준이 조금 흩어짐'},
-  horn:{name:'전쟁 나팔', col:'#e8731a', v:[.2, .3, .4], d:v => '일반 볼 피해 +' + pc(v)},
-  spear:{name:'사냥꾼의 창', col:'#5a8a3a', v:[.15, .2, .25], d:v => '내 앞 줄 적에게 치명타 +' + pc(v)},
-  amulet:{name:'명사수 부적', col:'#3ab8a0', v:[.3, .45, .6], d:v => '치명타 피해 +' + pc(v)},
+  thorns:{name:'가시 왕관', col:'#b8862a', v:[1, 2, 3], d:v => '맞으면 가까운 적 ' + v + '마리 처치'},
+  collar:{name:'가시 목걸이', col:'#7a5a4a', v:[1.5, 2.2, 3], d:v => '처음 다가온 적에게 공격력 ' + pc(v) + ' 피해'},
+  rattle:{name:'아기 딸랑이', col:'#ff9ac8', v:[1, 2, 2], d:v => '일반 볼 +' + v + '발, 조준이 조금 흩어짐'},
+  horn:{name:'전쟁 나팔', col:'#e8731a', v:[.12, .18, .25], d:v => '일반 볼 피해 +' + pc(v)},
+  spear:{name:'사냥꾼의 창', col:'#5a8a3a', v:[.08, .12, .16], d:v => '내 앞 줄 적에게 치명타 +' + pc(v)},
+  amulet:{name:'명사수 부적', col:'#3ab8a0', v:[.25, .35, .5], d:v => '치명타 피해 +' + pc(v)},
   cloak:{name:'유령 망토', col:'#7a80c8', v:[1, 2, 3], d:v => '맨 위 벽 전까지 ' + v + '마리 관통, 피해 +15%'},
-  corset:{name:'유령 코르셋', col:'#a888e0', v:[.2, .3, .4], d:v => '옆에서 맞히면 관통, 피해 +' + pc(v)},
-  silver:{name:'은탄환', col:'#a8b0c8', v:[.2, .3, .4], d:v => '벽에 닿기 전까지 피해 +' + pc(v)},
-  hourglass:{name:'모래시계', col:'#d8a030', v:[.5, .75, 1], d:v => '첫 타 피해 +' + pc(v) + ', 튕길 때마다 25% 감소'},
-  wheel:{name:'마차 바퀴', col:'#a8703e', v:[.3, .45, .6], d:v => '벽에 튕긴 뒤 다음 타격 +' + pc(v)},
+  corset:{name:'유령 코르셋', col:'#a888e0', v:[.12, .18, .25], d:v => '옆에서 맞히면 관통, 피해 +' + pc(v)},
+  silver:{name:'은탄환', col:'#a8b0c8', v:[.12, .18, .25], d:v => '벽에 닿기 전까지 피해 +' + pc(v)},
+  hourglass:{name:'모래시계', col:'#d8a030', v:[.3, .45, .6], d:v => '첫 타 피해 +' + pc(v) + ', 튕길 때마다 25% 감소'},
+  wheel:{name:'마차 바퀴', col:'#a8703e', v:[.2, .3, .4], d:v => '벽에 튕긴 뒤 다음 타격 +' + pc(v)},
   headband:{name:'고무 머리띠', col:'#4ac84a', v:[1.6, 1.8, 2], d:v => '공이 느리게 출발, 튕길수록 빨라짐 (최대 ' + pc(v) + ')'},
-  valve:{name:'압력 밸브', col:'#5a5a7a', v:[1, 1.5, 2], d:v => '적이 죽으면 터져 주변에 공격력 ' + pc(v)},
+  valve:{name:'압력 밸브', col:'#5a5a7a', v:[.25, .4, .55], d:v => '적이 죽으면 터져 주변에 공격력 ' + pc(v)},
   charm:{name:'보호 부적', col:'#4aa8ff', v:[60, 45, 30], d:v => '공격 1번 막음, ' + v + '초마다 충전'},
-  eye:{name:'주시자의 눈', col:'#ff7a5a', v:[.1, .15, .2], d:v => pc(v) + ' 확률로 공격 회피'},
-  staff:{name:'마법 지팡이', col:'#8a5ad0', v:[.2, .3, .4], d:v => '폭발·범위 피해 +' + pc(v)},
-  spike:{name:'얼음 가시', col:'#6ac0ff', v:[1, 1.5, 2], d:v => '적이 얼면 주변에 공격력 ' + pc(v) + ' 냉기'},
-  fan:{name:'손부채', col:'#ff6a9a', v:[.25, .35, .45], d:v => '내 앞 줄 적 ' + pc(v) + ' 둔화'},
-  turret:{name:'포탑', col:'#6a7a5a', v:[2, 1.6, 1.2], d:v => '도는 포탑이 ' + v + '초마다 한 발'},
-  mirror:{name:'손거울', col:'#c8e0f0', v:[.25, .35, .5], d:v => '적 탄 ' + pc(v) + ' 확률로 반사'},
-  quiver:{name:'연인의 화살통', col:'#ff5a8a', v:[.2, .3, .4], d:v => '적 탄 ' + pc(v) + ' 확률로 HP +2'},
+  eye:{name:'주시자의 눈', col:'#ff7a5a', v:[.06, .09, .12], d:v => pc(v) + ' 확률로 공격 회피'},
+  staff:{name:'마법 지팡이', col:'#8a5ad0', v:[.12, .18, .25], d:v => '폭발·범위 피해 +' + pc(v)},
+  spike:{name:'얼음 가시', col:'#6ac0ff', v:[.4, .6, .8], d:v => '적이 얼면 주변에 공격력 ' + pc(v) + ' 냉기'},
+  fan:{name:'손부채', col:'#ff6a9a', v:[.2, .28, .36], d:v => '내 앞 줄 적 ' + pc(v) + ' 둔화'},
+  turret:{name:'포탑', col:'#6a7a5a', v:[2.5, 2, 1.6], d:v => '도는 포탑이 ' + v + '초마다 한 발'},
+  mirror:{name:'손거울', col:'#c8e0f0', v:[.15, .22, .3], d:v => '적 탄 ' + pc(v) + ' 확률로 반사'},
+  quiver:{name:'연인의 화살통', col:'#ff5a8a', v:[.12, .18, .25], d:v => '적 탄 ' + pc(v) + ' 확률로 HP +2'},
   // 진화 (두 아이템 Lv3)
-  cornucopia:{name:'풍요의 뿔', col:'#ffb43a', g:'horn', evo:['rattle', 'horn'], d:() => '일반 볼 +4발, 피해 +50%, 25% 확률로 한 발 더'},
-  impaler:{name:'자비로운 꿰뚫개', col:'#3ab8a0', g:'spear', evo:['spear', 'amulet'], d:() => '치명타 +10% (앞 줄 +25%), 피해 +60%, 5% 즉사'},
-  shell:{name:'악취 등딱지', col:'#7a9a4a', g:'onion', evo:['onion', 'plate'], d:() => '피해 -25%, 넓은 독 오라, 닿은 적 50% 즉사'},
-  regalia:{name:'유령 예복', col:'#8a7ae0', g:'cloak', evo:['cloak', 'corset'], d:() => '맨 위 벽까지 모두 관통, 관통 중 피해 +50%'},
-  reaver:{name:'영혼 수확자', col:'#a82a4a', g:'sword', evo:['sword', 'goblet'], d:() => '처치마다 HP +1.5, 넘친 회복 50% 보호막'},
-  mask:{name:'고문자의 가면', col:'#6a4a3a', g:'thorns', evo:['collar', 'thorns'], d:() => '다가온 적 10% 즉사·공격력 600%, 맞으면 4마리 처치'},
-  wings:{name:'축복의 날개', col:'#fff0a0', g:'feather', evo:['feather', 'feet'], d:() => '공 속도 +40%, 이동 +20%, 장판·둔화 무시'},
-  stopwatch:{name:'은빛 회중시계', col:'#c8d0e8', g:'hourglass', evo:['hourglass', 'silver'], d:() => '벽 전까지 피해 +100%, 그 뒤에도 +30%'},
-  tire:{name:'불타는 타이어', col:'#ff6a2a', g:'wheel', evo:['headband', 'wheel'], d:() => '튕길 때마다 속도 +10%·피해 +15% 누적 (최대 2.5배)'},
-  artillery:{name:'괴물 포대', col:'#5a6a4a', g:'turret', evo:['turret', 'fan'], d:() => '포탑 2개가 1초마다 발사, 앞 줄 50% 둔화'},
-  fate:{name:'운명의 화살', col:'#ff4a6a', g:'mirror', evo:['mirror', 'quiver'], d:() => '적 탄 50% 반사, 30% 확률로 HP +3'},
+  cornucopia:{name:'풍요의 뿔', col:'#ffb43a', g:'horn', evo:['rattle', 'horn'], d:() => '일반 볼 +3발, 피해 +30%, 15% 확률로 한 발 더'},
+  impaler:{name:'자비로운 꿰뚫개', col:'#3ab8a0', g:'spear', evo:['spear', 'amulet'], d:() => '치명타 +6% (앞 줄 +16%), 피해 +50%, 2% 즉사'},
+  shell:{name:'악취 등딱지', col:'#7a9a4a', g:'onion', evo:['onion', 'plate'], d:() => '피해 -18%, 넓은 독 오라, 닿은 적 20% 즉사'},
+  regalia:{name:'유령 예복', col:'#8a7ae0', g:'cloak', evo:['cloak', 'corset'], d:() => '맨 위 벽까지 모두 관통, 관통 중 피해 +30%'},
+  reaver:{name:'영혼 수확자', col:'#a82a4a', g:'sword', evo:['sword', 'goblet'], d:() => '처치마다 HP +1, 넘친 회복 35% 보호막'},
+  mask:{name:'고문자의 가면', col:'#6a4a3a', g:'thorns', evo:['collar', 'thorns'], d:() => '다가온 적 5% 즉사·공격력 300%, 맞으면 3마리 처치'},
+  wings:{name:'축복의 날개', col:'#fff0a0', g:'feather', evo:['feather', 'feet'], d:() => '공 속도 +25%, 이동 +12%, 장판·둔화 무시'},
+  stopwatch:{name:'은빛 회중시계', col:'#c8d0e8', g:'hourglass', evo:['hourglass', 'silver'], d:() => '벽 전까지 피해 +50%, 그 뒤에도 +15%'},
+  tire:{name:'불타는 타이어', col:'#ff6a2a', g:'wheel', evo:['headband', 'wheel'], d:() => '튕길 때마다 속도 +10%·피해 +10% 누적 (최대 2배)'},
+  artillery:{name:'괴물 포대', col:'#5a6a4a', g:'turret', evo:['turret', 'fan'], d:() => '포탑 2개가 1.5초마다 발사, 앞 줄 40% 둔화'},
+  fate:{name:'운명의 화살', col:'#ff4a6a', g:'mirror', evo:['mirror', 'quiver'], d:() => '적 탄 30% 반사, 20% 확률로 HP +3'},
 };
 const IL = id => (S.items && S.items[id]) || 0;                                  // 아이템 단계 (없으면 0)
 const IV = id => IL(id) && ITEM[id].v ? ITEM[id].v[IL(id) - 1] : 0;              // 현재 단계 수치
@@ -839,8 +839,8 @@ const aoeMul = () => 1 + IV('staff');
 function applyItems() { // 능력치형 아이템: 기본 능력치에서 다시 계산
   const b = S.chBase, c = S.ch;
   c.magnet = b.magnet + IV('magnet'); c.catchR = b.catchR + IV('magnet')/15;
-  c.spd = b.spd*(1 + IV('feet') + (EV('wings') ? .2 : 0)); c.ballMul = b.ballMul*(1 + IV('feather') + (EV('wings') ? .4 : 0));
-  c.normal = b.normal + (IV('rattle') || (EV('cornucopia') ? 4 : 0)); syncChambers();
+  c.spd = b.spd*(1 + IV('feet') + (EV('wings') ? .12 : 0)); c.ballMul = b.ballMul*(1 + IV('feather') + (EV('wings') ? .25 : 0));
+  c.normal = b.normal + (IV('rattle') || (EV('cornucopia') ? 3 : 0)); syncChambers();
 }
 function itemRoll() { // 무료 강화 때 보여 줄 아이템 3개: 진화 가능 → 강화 / 새 아이템 (칸이 남을 때)
   const own = Object.keys(S.items), evos = [], pool = [];
@@ -854,23 +854,23 @@ function itemRoll() { // 무료 강화 때 보여 줄 아이템 3개: 진화 가
 function babyShot(x, y, a, dmg) { S.shots.push({fns:[], E:1, dmg, r:6, pierce:0, x, y, vx:Math.cos(a)*ballSpd(), vy:Math.sin(a)*ballSpd(), chamber:null, hit:new Map(), life:3, baby:true, zonesHit:new Set()}); }
 function heal(n) { // 회복: 넘친 만큼은 술잔이 있으면 보호막으로
   const room = S.maxHp - S.hp; if (n <= room) { S.hp += n; return; }
-  S.hp = S.maxHp; const g = IV('goblet') || (EV('reaver') ? .5 : 0); if (g) S.shield = Math.min(S.maxHp*.5, (S.shield || 0) + (n - room)*g);
+  S.hp = S.maxHp; const g = IV('goblet') || (EV('reaver') ? .35 : 0); if (g) S.shield = Math.min(S.maxHp*.5, (S.shield || 0) + (n - room)*g);
 }
 function nearestFoes(n, r) { return S.enemies.filter(o => !o.dead && !ENEMY[o.type].boss && Math.hypot(o.x - S.px, o.y - S.py) < r).sort((a, b) => Math.hypot(a.x - S.px, a.y - S.py) - Math.hypot(b.x - S.px, b.y - S.py)).slice(0, n); }
 function itemTick(dt) { // 매 프레임: 부적 충전, 양파 오라, 목걸이, 부채, 포탑, 날개
   const ch = S.ch; if (S.charmT > 0) S.charmT -= dt;
   if (EV('wings')) S.slowT = 0;
-  const on = IV('onion') || (EV('shell') ? 1.5 : 0), ar = EV('shell') ? 140 : 110;
+  const on = IV('onion') || (EV('shell') ? .6 : 0), ar = EV('shell') ? 130 : 110;
   if (on && (S.auraT = (S.auraT || 0) - dt) <= 0) { S.auraT = .25; for (const e of S.enemies) if (!e.dead && Math.hypot(e.x - S.px, e.y - S.py) < ar + e.r) hurt(e, ch.atk*on*.25); }
-  const cm = IV('collar') || (EV('mask') ? 6 : 0);
+  const cm = IV('collar') || (EV('mask') ? 3 : 0);
   for (const e of S.enemies) {
     if (e.dead) continue; const boss = ENEMY[e.type].boss, d = Math.hypot(e.x - S.px, e.y - S.py);
-    if (EV('shell') && !boss && !e.shellT && d < ch.r + e.r + 6) { e.shellT = 1; if (rand() < .5) { hurt(e, e.hp); continue; } }
-    if (cm && !e.col && d < ch.r + e.r + 90) { e.col = true; S.fx.push({k:'line', x:S.px, y:S.py, x2:e.x, y2:e.y, t:.15, T:.15}); if (EV('mask') && !boss && rand() < .1) hurt(e, e.hp); else hurt(e, ch.atk*cm); }
+    if (EV('shell') && !boss && !e.shellT && d < ch.r + e.r + 6) { e.shellT = 1; if (rand() < .2) { hurt(e, e.hp); continue; } }
+    if (cm && !e.col && d < ch.r + e.r + 90) { e.col = true; S.fx.push({k:'line', x:S.px, y:S.py, x2:e.x, y2:e.y, t:.15, T:.15}); if (EV('mask') && !boss && rand() < .05) hurt(e, e.hp); else hurt(e, ch.atk*cm); }
   }
-  const fn = IV('fan') || (EV('artillery') ? .5 : 0);
+  const fn = IV('fan') || (EV('artillery') ? .4 : 0);
   if (fn) for (const e of S.enemies) if (!e.dead && e.y < S.py && Math.abs(e.x - S.px) < 70 && (e.slowT <= 0 || e.slow < fn)) { e.slowT = .15; e.slow = fn; }
-  const ti = IV('turret') || (EV('artillery') ? 1 : 0);
+  const ti = IV('turret') || (EV('artillery') ? 1.5 : 0);
   if (ti && S.enemies.length && (S.turT = (S.turT || 0) - dt) <= 0) { S.turT = ti; const n = EV('artillery') ? 2 : 1;
     for (let k = 0; k < n; k++) { const a = S.t*2 + k*Math.PI, x = S.px + Math.cos(a)*40, y = S.py + Math.sin(a)*40; babyShot(x, y, aimAngle(), ch.atk*.8); } }
 }
@@ -881,19 +881,19 @@ function bounceGain(s) { // 튕길 때: 횟수 + 고무 머리띠·타이어 가
 }
 function itemDmg(s, e) { // 볼 타격 피해 배율
   let m = 1; const bn = s.bn || 0;
-  if (!s.fns.length) m *= 1 + (IV('horn') || (EV('cornucopia') ? .5 : 0));
-  const sv = IV('silver') || (EV('stopwatch') ? 1 : 0); if (!s.walls) m *= 1 + sv; else if (EV('stopwatch')) m *= 1.3;
+  if (!s.fns.length) m *= 1 + (IV('horn') || (EV('cornucopia') ? .3 : 0));
+  const sv = IV('silver') || (EV('stopwatch') ? .5 : 0); if (!s.walls) m *= 1 + sv; else if (EV('stopwatch')) m *= 1.15;
   if (IL('hourglass')) m *= Math.max(.5, 1 + IV('hourglass') - .25*bn);
   if (s.wheel && IV('wheel')) { m *= 1 + IV('wheel'); s.wheel = false; }
-  if (EV('tire')) m *= Math.min(2.5, 1 + .15*bn);
+  if (EV('tire')) m *= Math.min(2, 1 + .1*bn);
   if (IV('corset') && Math.abs(s.x - e.x) > Math.abs(s.y - e.y)) m *= 1 + IV('corset');
-  if (s.ghost > 0 && !s.topHit) m *= EV('regalia') ? 1.5 : 1.15;
+  if (s.ghost > 0 && !s.topHit) m *= EV('regalia') ? 1.3 : 1.1;
   return m;
 }
-const itemCrit = e => (Math.abs(e.x - S.px) < 70 && e.y < S.py ? IV('spear') + (EV('impaler') ? .25 : 0) : 0) + (EV('impaler') ? .1 : 0);
+const itemCrit = e => (Math.abs(e.x - S.px) < 70 && e.y < S.py ? IV('spear') + (EV('impaler') ? .16 : 0) : 0) + (EV('impaler') ? .06 : 0);
 function itemKill(e) { // 처치: 흡혈검·압력 밸브
-  const h = IV('sword') || (EV('reaver') ? 1.5 : 0); if (h) heal(h);
-  if (IV('valve')) S.delayed.push({t:.05, x:e.x, y:e.y, r:60, dmg:S.ch.atk*IV('valve'), c:'#c8c8d8'});
+  const h = IV('sword') || (EV('reaver') ? 1 : 0); if (h) heal(h);
+  if (IV('valve') && !S.inValve) S.delayed.push({t:.05, x:e.x, y:e.y, r:50, dmg:S.ch.atk*IV('valve'), c:'#c8c8d8', valve:true}); // 밸브 폭발로 죽은 적은 다시 터지지 않음
 }
 function itemGuard() { // 맞기 직전: 회피·부적이 막으면 true
   if (IV('eye') && rand() < IV('eye')) { S.inv = .3; if (S.texts.length < 120) S.texts.push({x:S.px, y:S.py - 30, s:'회피', t:.6, c:'#fff'}); return true; }
@@ -901,7 +901,7 @@ function itemGuard() { // 맞기 직전: 회피·부적이 막으면 true
   return false;
 }
 function itemArrow(a) { // 적 탄이 닿을 때: 손거울 반사·화살통 회복이면 true
-  const mr = IV('mirror') || (EV('fate') ? .5 : 0), q = IV('quiver') || (EV('fate') ? .3 : 0);
+  const mr = IV('mirror') || (EV('fate') ? .2 : 0), q = IV('quiver') || (EV('fate') ? .3 : 0);
   if (mr && rand() < mr) { a.gone = true; const t = S.enemies.filter(o => !o.dead).sort((x, y) => Math.hypot(x.x - S.px, x.y - S.py) - Math.hypot(y.x - S.px, y.y - S.py))[0];
     if (t) { S.fx.push({k:'line', x:S.px, y:S.py, x2:t.x, y2:t.y, t:.2, T:.2}); hurt(t, a.dmg*3 + S.ch.atk); } return true; }
   if (q && rand() < q) { a.gone = true; heal(EV('fate') ? 3 : 2); if (S.texts.length < 120) S.texts.push({x:S.px, y:S.py - 30, s:'+' + (EV('fate') ? 3 : 2), t:.6, c:'#ff9ab8'}); return true; }
@@ -998,10 +998,10 @@ function kill(e) {
 function hitPlayer(n) {
   if (S.inv > 0 || S.mode !== 'play') return;
   if (itemGuard()) return;
-  let dmg = n*(S.level.dmgMul || 1)*(S.curseT > 0 ? 1.3 : 1)*100/(100 + S.ch.def)*(1 - IV('plate') - (EV('shell') ? .25 : 0));
+  let dmg = n*(S.level.dmgMul || 1)*(S.curseT > 0 ? 1.3 : 1)*100/(100 + S.ch.def)*(1 - IV('plate') - (EV('shell') ? .18 : 0));
   if (S.shield > 0) { const k = Math.min(S.shield, dmg); S.shield -= k; dmg -= k; }
   S.hp -= dmg; S.inv = .3;
-  const th = IV('thorns') || (EV('mask') ? 4 : 0); if (th) for (const o of nearestFoes(th, 260)) { S.fx.push({k:'line', x:S.px, y:S.py, x2:o.x, y2:o.y, t:.2, T:.2}); hurt(o, o.hp); } S.fx.push({k:'flash', t:.2, T:.2}); sfx('hurt', .1);
+  const th = IV('thorns') || (EV('mask') ? 3 : 0); if (th) for (const o of nearestFoes(th, 260)) { S.fx.push({k:'line', x:S.px, y:S.py, x2:o.x, y2:o.y, t:.2, T:.2}); hurt(o, o.hp); } S.fx.push({k:'flash', t:.2, T:.2}); sfx('hurt', .1);
   if (S.hp <= 0 && !revive()) endRun(false);
 }
 function revive() { // 불사조 볼: 판마다 한 번, 쓰러지면 HP 일부로 일어나 잠깐 무적
@@ -1030,7 +1030,7 @@ function applyStatus(e, s, d) {
 function onHit(s, e) {
   const boss = ENEMY[e.type].boss, has = id => s.fns.includes(id);
   const crit = rand() < RULE.crit + (has('crit') ? fv('crit', s.E).pct : 0) + (s.evo === 'sniper' ? .3 : 0) + itemCrit(e);
-  let d = s.dmg*(crit ? (s.evo === 'sniper' ? 3 : 2) + (IV('amulet') || (EV('impaler') ? .6 : 0)) : 1)*itemDmg(s, e);
+  let d = s.dmg*(crit ? (s.evo === 'sniper' ? 3 : 2) + (IV('amulet') || (EV('impaler') ? .5 : 0)) : 1)*itemDmg(s, e);
   if (has('holy') && (e.elite || boss)) d *= 1 + fv('holy', s.E).pct; // 신성: 보스·정예 추가 피해
   if (has('shatter') && (e.frozenT > 0 || e.slowT > 0)) d *= 1 + fv('shatter', s.E).pct; // 파쇄: 얼음·둔화·기절
   if (has('rot')) d += e.max*fv('rot', s.E).pct*(boss ? .1 : 1);                        // 부패: 최대 HP 비례
@@ -1038,7 +1038,7 @@ function onHit(s, e) {
   if (e.helm > 0) { e.helm--; d *= .2 + .8*(has('acid') ? fv('acid', s.E).pct : 0); if (S.texts.length < 120) S.texts.push({x:e.x, y:e.y - e.r - 6, s:e.helm ? '쨍' : '안전모 깨짐', t:.5, c:'#ffd23a'}); if (!e.helm) burst(e.x, e.y - e.r, '#ffd23a', 8); } // 안전모: 직격 몇 번은 20%만
   const alive = !e.dead;
   hurt(e, d, crit); applyStatus(e, s, d); sfx('hit', .05);
-  if (crit && EV('impaler') && !boss && !e.dead && rand() < .05) hurt(e, e.hp);                     // 꿰뚫개: 치명타 즉사
+  if (crit && EV('impaler') && !boss && !e.dead && rand() < .02) hurt(e, e.hp);                     // 꿰뚫개: 치명타 즉사
   if (!s.baby) bounceGain(s);
   if (alive && e.dead && !boss) { // 이 볼로 처치
     if (has('lucky')) S.picks.push({x:e.x, y:e.y, kind:'xp', v:ENEMY[e.type].xp*RULE.mobXp*fv('lucky', s.E).pct*(e.elite ? 4 : 1), t:0});
@@ -1105,9 +1105,9 @@ function aimAngle() {
 function launch(c) {
   const p = shotProps(c.src), rt = !c.src && (IL('rattle') || EV('cornucopia')), a = aimAngle() + (rand() - .5)*(rt ? .35 : .05);
   c.out = true;
-  const hb = IV('headband') || (EV('tire') ? 2 : 0), it = {ghost:IV('cloak') || (EV('regalia') ? 99 : 0), hb:hb ? (EV('tire') ? 1 : .7) : 1, hbMax:hb, walls:0, bn:0};
+  const hb = IV('headband') || (EV('tire') ? 1.8 : 0), it = {ghost:IV('cloak') || (EV('regalia') ? 99 : 0), hb:hb ? (EV('tire') ? 1 : .7) : 1, hbMax:hb, walls:0, bn:0};
   p.spdMul *= it.hb;
-  if (EV('cornucopia') && !c.src && rand() < .25) babyShot(S.px, S.py, a + (rand() - .5)*.3, p.dmg);
+  if (EV('cornucopia') && !c.src && rand() < .15) babyShot(S.px, S.py, a + (rand() - .5)*.3, p.dmg);
   S.shots.push({...p, ...it, x:S.px + Math.cos(a)*26, y:S.py + Math.sin(a)*26, vx:Math.cos(a)*ballSpd()*p.spdMul, vy:Math.sin(a)*ballSpd()*p.spdMul,
     chamber:c, hit:new Map(), life:1e9, baby:false, bounced:false, ret:false, held:0, zonesHit:new Set(), rot:rand()*TAU, w:(rand() < .5 ? -1 : 1)*(9 + rand()*7)});
 }
@@ -1292,7 +1292,7 @@ function update(dt) {
   }
   if (S.mode !== 'play') return; // 보스 처치·패배로 판 종료
   separate();
-  for (const q of S.delayed) if ((q.t -= dt) <= 0) { q.gone = true; S.fx.push({k:'ring', x:q.x, y:q.y, r:q.r, t:.3, T:.3, c:q.c || FN.bomb.color}); for (const o of S.enemies) if (!o.dead && Math.hypot(o.x - q.x, o.y - q.y) < q.r + o.r) hurt(o, q.dmg*aoeMul()); }
+  for (const q of S.delayed) if ((q.t -= dt) <= 0) { q.gone = true; S.inValve = !!q.valve; S.fx.push({k:'ring', x:q.x, y:q.y, r:q.r, t:.3, T:.3, c:q.c || FN.bomb.color}); for (const o of S.enemies) if (!o.dead && Math.hypot(o.x - q.x, o.y - q.y) < q.r + o.r) hurt(o, q.dmg*aoeMul()); S.inValve = false; }
   S.delayed = S.delayed.filter(q => !q.gone);
   for (const z of S.zones) z.t -= dt;
   S.zones = S.zones.filter(z => z.t > 0);
@@ -2894,8 +2894,8 @@ function selfTest() {
     }
     reset(); startLevel(1); const sp0 = S.ch.spd, nc = S.chambers.length; S.fu = {left:3, total:3, t:1, items:[]}; S.mode = 'freeup';
     freeItem({kind:'new', id:'feet'}); ok(S.ch.spd > sp0 && S.items.feet === 1, '아이템: 날쌘 발');
-    S.items = {rattle:3, horn:3}; applyItems(); const ro = itemRoll(); ok(ro[0].kind === 'evo' && ro[0].id === 'cornucopia' && S.chambers.length === nc + 3, '아이템: Lv3 두 개면 진화 카드');
-    S.fu.left = 1; freeItem(ro[0]); ok(S.items.cornucopia === 1 && !S.items.rattle && S.chambers.length === nc + 4 && S.mode === 'play', '아이템: 진화하면 한 칸으로 합쳐짐');
+    S.items = {rattle:3, horn:3}; applyItems(); const ro = itemRoll(); ok(ro[0].kind === 'evo' && ro[0].id === 'cornucopia' && S.chambers.length === nc + 2, '아이템: Lv3 두 개면 진화 카드');
+    S.fu.left = 1; freeItem(ro[0]); ok(S.items.cornucopia === 1 && !S.items.rattle && S.chambers.length === nc + 3 && S.mode === 'play', '아이템: 진화하면 한 칸으로 합쳐짐');
     S.items = {a:1, b:1, c:1, d:1}; for (const k of 'abcd') ITEM[k] = {v:[1, 1, 1]}; ok(itemRoll().every(o => o.kind !== 'new'), '아이템: 칸이 차면 새 아이템 없음'); for (const k of 'abcd') delete ITEM[k]; S.items = {};
     const quiet = () => { S.waveT = S.spawnT = S.eliteT = 1e9; }; // 웨이브 진행 멈춤
     // 공 순환: 나가 있는 칸은 발사되지 않고, 바닥에 닿은 공도 회수된다
@@ -3081,6 +3081,7 @@ function selfTest() {
     META.maxLevel = 0; META.pinball = 0; META.autoT = Date.now() - 2*36e5; ok(autoPending() === 2*AUTO.base, '2시간 수익');
     META.autoT = Date.now() - 20*36e5; ok(autoPending() === AUTO.capH*AUTO.base, '8시간 상한');
     const pn = autoPending(); claimAuto(pn); ok(META.pinball === pn && autoPending() === 0, '수익 받기 (핀볼)');
+    META.deck = ['fire']; for (const id of ['frost', 'spark', 'nova']) gainBall(id); reset(); startLevel(2); S.balls = S.balls.slice(0, 1); ok(buildChoices().filter(c => c.type === 'new').every(c => c.id === 'fire'), '레벨 중 새 볼은 장착한 볼에서만');
   } finally { S = savedS; META = savedMeta; rand = Math.random; saving = true; }
   return 'selfTest ok';
 }
