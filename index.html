@@ -262,7 +262,7 @@ function raidLevel(r) {
 // ---------- 데이터: 핀볼 머신 (DESIGN 10장) ----------
 const PINBALL = {
   // 잭팟(선물 상자)을 뺀 모든 칸은 플레이어 경험치 (v = 경험치)
-  slots:[{id:'xp', v:3, w:27, name:'EXP', color:'#7fd3f5'}, {id:'xp', v:6, w:21, name:'EXP', color:'#8bd65a'}, {id:'gift', w:4, name:'선물', color:'#ff6ab0'},
+  slots:[{id:'xp', v:3, w:27, name:'EXP', color:'#7fd3f5'}, {id:'xp', v:6, w:21, name:'EXP', color:'#8bd65a'}, {id:'gift', w:4, name:'잭팟', color:'#ff6ab0'},
          {id:'xp', v:6, w:21, name:'EXP', color:'#8bd65a'}, {id:'xp', v:3, w:27, name:'EXP', color:'#7fd3f5'}],
   counts:[1, 2, 3, 5, 10], unlock:{2:50, 3:300, 5:500, 10:1000}, dropEvery:.15, // 배율 단계 (탭할 때마다 순환) + 해금 조건: 보유 핀볼이 unlock[n]개 이상일 때만 그 배율 사용
   cycleBalls:20,                                       // PUSH를 누르고 있을 때 한 사이클에 날아가는 공 수 (최대). 바꾸려면 이 숫자만 고치면 됨
@@ -2010,7 +2010,7 @@ function drawBalls() {
       uiLabel('볼 레벨 Lv' + o.lv + ' · 피해 +' + Math.round(ballBonus(id)*100) + '%', 54, 1096, 20, UI.ink, 'left', 700);
       uiLabel(o.lv >= BALL_MAXLV ? '최대 레벨' : '사본 ' + o.n + ' / ' + ballCopies(o.lv), 54, 1126, 19, '#6a5a8a', 'left', 700);
       if (id === cs) uiLabel('캐릭터 시작 볼 (항상 함께 출전)', 54, 1152, 17, '#e8731a', 'left', 900);
-    } else uiLabel('미보유 · 선물 상자 · 침략 처치 보상에서 얻어요', 54, 1100, 19, '#8a7aa8', 'left', 700);
+    } else uiLabel('미보유 · 잭팟 · 침략 처치 보상에서 얻어요', 54, 1100, 19, '#8a7aa8', 'left', 700);
   }
   for (const b of ballButtons()) if (b.kind === 'act') uiBtn(b, b.label, b.theme, 28, b.off);
   tabBar('balls');
@@ -2161,7 +2161,7 @@ function arriveXp(val = 1) {
 }
 function revealGot(sp) { // 릴이 멈추면 보상이 카드로 튀어나와 잠시 보였다가 목적지(보유 핀볼·볼 탭·캐릭터 탭)로 날아간다
   MS.revealed = true; const n = sp.got.length;
-  sp.got.forEach((g, k) => { const gv = g.kind === 'pb' ? g.v : g.dupPb || 0; MS.rew.push({g, gv, x:W/2 + (k - (n - 1)/2)*(n > 2 ? 200 : 240), y:690, t:-k*.2, hold:.8, fly:.6}); });
+  sp.got.forEach((g, k) => { const gv = g.kind === 'pb' ? g.v : g.dupPb || 0; MS.rew.push({g, gv, x:W/2 + (k - (n - 1)/2)*(n > 2 ? 200 : 240), y:800, t:-k*.2, hold:.8, fly:.6}); });
   sfx(sp.triple ? 'gift' : 'coin');
 }
 function arriveRew(r) {
@@ -2169,7 +2169,7 @@ function arriveRew(r) {
   if (r.gv) MS.pend = Math.max(0, MS.pend - r.gv); sfx(r.g.kind === 'pb' ? 'coin' : 'up');
   MS.top.push({k:'ring', x:d[0], y:d[1], r:70, t:.4, T:.4, c:'#fff6a0'}); for (let i = 0; i < 6; i++) MS.top.push({k:'dot', x:d[0], y:d[1], vx:(Math.random() - .5)*300, vy:-150*Math.random(), t:.4, T:.4, c:'#ffd23a'});
 }
-const GIFT_OPEN = .7; // 선물 상자가 흔들리다 열리는 시간
+const GIFT_OPEN = .7; // 잭팟: 레버를 당기는 시간 (그 뒤 릴이 돎)
 const spinStops = sp => [GIFT_OPEN + .7, GIFT_OPEN + 1.1, GIFT_OPEN + (sp.reels[0] === sp.reels[1] ? 2.7 : 1.5)]; // 앞 두 릴이 같으면 세 번째 릴을 1.2초 더 (확률은 그대로)
 function nextSpin() { MS.spinT = 0; MS.revealed = false; MS.rew = []; if (++MS.spin >= MS.plan.spins.length) finishMachine(); }
 function updateMachine(dt) {
@@ -2311,7 +2311,7 @@ function drawCabinet() {
   for (let i = 1; i < PINBALL.slots.length; i++) { const x = MB.x0 + i*SLOT_W; uiPath(x - 7, MB.slotY - 30, 14, MB.slotH + 30, 7); ctx.fillStyle = '#ffb43a'; ctx.fill(); uiLine(UI.ink, 3.5); }
   { const tot = PINBALL.slots.reduce((a, sl, i) => a + (sl.v || 0)*MS.counts[i], 0)*(MS.mult || 1), gifts = MS.counts[PINBALL.slots.findIndex(sl => sl.id === 'gift')]; // 쌓이는 경험치 전광판
     uiPath(280, 240, 160, 66, 10); ctx.fillStyle = '#1a0a30'; ctx.fill(); uiLine('#ff9a2a', 5); ctx.fillStyle = '#ffd23a'; ctx.font = '900 28px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('EXP ' + tot, 360, 296);
-    if (gifts) { ctx.font = '900 15px ' + FONT; ctx.fillStyle = '#ff9ac8'; ctx.fillText('선물 ×' + gifts, 360, 265); } }
+    if (gifts) { ctx.font = '900 15px ' + FONT; ctx.fillStyle = '#ff9ac8'; ctx.fillText('잭팟 ×' + gifts, 360, 265); } }
   for (const f of MS.fx) { const a = Math.max(0, f.t/f.T); ctx.globalAlpha = a;
     if (f.k === 'dot') { ctx.fillStyle = f.c; ctx.fillRect(f.x - 4, f.y - 4, 8, 8); } else if (f.k === 'ring') { ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1 - a*.6), 0, TAU); ctx.strokeStyle = f.c; ctx.lineWidth = 6*a + 1; ctx.stroke(); } else uiTxt(f.s, f.x, f.y, 30, f.c);
     ctx.globalAlpha = 1; }
@@ -2402,7 +2402,7 @@ function drawHub() { // 핀볼 페이지 = 대기(select) / 발사 중(machine)
   tabBar('hub', !idle);
   if (MS.phase === 'spin') drawSlotMachine();
   drawFlights();
-  if (MS.phase === 'settle' && MS.plan.spins.length) { uiPill(130, 930, 460, 64, '#d8307a'); uiTxt('선물 상자' + (MS.plan.spins[0].boxes > 1 ? ' ×' + MS.plan.spins[0].boxes : '') + ' 개봉 준비!', W/2, 975, 28); }
+  if (MS.phase === 'settle' && MS.plan.spins.length) { uiPill(130, 930, 460, 64, '#d8307a'); uiTxt('잭팟' + (MS.plan.spins[0].boxes > 1 ? ' ×' + MS.plan.spins[0].boxes : '') + ' 돌릴 준비!', W/2, 975, 28); }
   if (MS.msg) { uiPill(130, 900, 460, 64, '#d8302a'); uiTxt(MS.msg.s, W/2, 944, 28); }
 }
 // ---------- 로비: 자동 사냥 + 자동 사냥 수익 + 레벨·침략 ----------
@@ -2460,25 +2460,38 @@ function gotText(g) {
   return CHARS.find(c => c.id === g.id).name + ' 해금!';
 }
 const SYMBOL_NAME = {ball:'볼', char:'캐릭터', pb:'핀볼'};
-function drawSlotMachine() {
-  const sp = MS.plan.spins[MS.spin], stops = spinStops(sp), done = MS.spinT >= stops[2];
-  uiPopup(60, 300, 600, 520, '#4a2394'); uiRibbon(W/2, 300, 420, '선물 상자' + (sp.boxes > 1 ? ' ×' + sp.boxes : '') + (sp.mult > 1 ? ' · 보상 ×' + sp.mult : ''), 'gold', 32);
-  if (MS.spinT < GIFT_OPEN) { // 선물 상자가 점점 세게 흔들리다 터지며 열린다
-    const k = MS.spinT/GIFT_OPEN, T = performance.now()/1000; ctx.save(); ctx.translate(W/2 + Math.sin(T*50)*10*k, 560); ctx.rotate(Math.sin(T*40)*.15*k); ctx.scale(1 + k*.25, 1 + k*.25); uiGift(0, 0, 80); ctx.restore();
-    uiTxt('두근두근...', W/2, 740, 30, '#fff'); return;
-  }
-  if (MS.spinT < GIFT_OPEN + .35) { const u = (MS.spinT - GIFT_OPEN)/.35; ctx.globalAlpha = 1 - u; ctx.fillStyle = '#fff'; ctx.fillRect(60, 300, 600, 520);
-    ctx.beginPath(); for (let k = 0; k < 24; k++) { const a = k*TAU/24 + u, d = (k%2 ? 120 : 420)*(.4 + u); ctx.lineTo(W/2 + Math.cos(a)*d, 560 + Math.sin(a)*d); } ctx.closePath(); ctx.fillStyle = '#ffd23a'; ctx.fill(); ctx.globalAlpha = 1; uiTxt('선물 상자!', W/2, 780, 48, '#ff6ab0'); }
-  const keys = Object.keys(PINBALL.reel);
-  for (let i = 0; i < 3; i++) {
-    const x = 110 + i*170, stopped = MS.spinT >= stops[i], kind = stopped ? sp.reels[i] : keys[Math.floor(performance.now()/70 + i)%3];
-    uiPath(x, 410, 130, 170, 22); ctx.fillStyle = UI.cream; ctx.fill(); uiLine(stopped && sp.triple ? UI.gold : UI.ink, stopped && sp.triple ? 9 : 6);
-    uiSymbol(kind, x + 65, 480, 78); if (stopped) uiLabel(SYMBOL_NAME[kind], x + 65, 560, 22, UI.ink, 'center', 900);
-  }
-  if (done) {
-    if (sp.triple) uiTxt('3개 일치! 상위 보상', W/2, 640, 34, UI.gold);
-  }
-  if (!MS.revealed) uiTxt('화면을 누르면 넘어갑니다', W/2, 790, 20, '#e6dcff');
+function drawSlotMachine() { // 잭팟 기계 (slot_mockups B): 빨강·금 몸통 + 금빛 네온, JACKPOT 간판·숫자판, 레버, 릴 3개, SPIN 아래 보상 안내
+  const sp = MS.plan.spins[MS.spin], stops = spinStops(sp), t = MS.spinT, T = performance.now()/1000, done = t >= stops[2], win = done && sp.triple, keys = ['pb', 'ball', 'char'];
+  const glowTxt = (str, x, y, size, c, g, blur) => { ctx.save(); ctx.shadowColor = g || c; ctx.shadowBlur = blur || 20; uiTxt(str, x, y, size, c); ctx.restore(); };
+  const bulbs = (x, y, w, h, n, cols) => { for (let k = 0; k < n; k++) { const d = k/n*2*(w + h); let bx, by; if (d < w) { bx = x + d; by = y; } else if (d < w + h) { bx = x + w; by = y + d - w; } else if (d < 2*w + h) { bx = x + w - (d - w - h); by = y + h; } else { bx = x; by = y + h - (d - 2*w - h); }
+    const on = win ? Math.floor(T*12)%2 === k%2 : (Math.floor(T*8) + k)%4 === 0; ctx.fillStyle = on ? cols[k%cols.length] : '#5a3a2a'; ctx.fillRect(Math.round(bx) - 6, Math.round(by) - 6, 12, 12); if (on) { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(Math.round(bx) - 4, Math.round(by) - 4, 4, 4); } } };
+  ctx.fillStyle = 'rgba(10,4,24,.86)'; ctx.fillRect(0, 0, W, H);
+  if (win && Math.floor(T*10)%2) { ctx.fillStyle = 'rgba(255,210,58,.12)'; ctx.fillRect(0, 0, W, H); }                                         // 3개 일치: 화면 번쩍
+  pxBox(90, 180, 540, 860, '#c8202a', {light:'#ff5a4a', lh:3, shade:'#7a1018', sh:5, drop:'rgba(0,0,0,.5)', u:6});                               // 몸통
+  ctx.save(); ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 26; ctx.strokeStyle = '#ffd23a'; ctx.lineWidth = 6; ctx.strokeRect(100, 190, 520, 840); ctx.restore(); // 금빛 네온 테두리
+  pxBox(130, 110, 460, 160, '#ffd23a', {light:'#fff0a0', lh:2, shade:'#c8901a', sh:3, u:6}); bulbs(138, 118, 444, 144, 26, ['#fff6a0', '#ff5a8a', '#6ae0ff']);
+  glowTxt('JACKPOT', 360, 200, 62, win && Math.floor(T*8)%2 ? '#ff3ad8' : '#c8202a', win ? '#ff3ad8' : '#ff3a3a', win ? 30 : 14);
+  pxBox(200, 220, 320, 40, '#1a0a10', {light:null, shade:null}); ctx.save(); ctx.shadowColor = '#ff4a4a'; ctx.shadowBlur = 10; uiLabel((sp.boxes > 1 ? '×' + sp.boxes + ' ' : '') + (sp.mult > 1 ? '보상 ×' + sp.mult : String(Math.floor(T*137)%1000000).padStart(6, '0')), 360, 252, 28, '#ff4a4a', 'center', 900); ctx.restore(); // 숫자판 (배율·상자 수)
+  pxBox(130, 320, 460, 280, '#ffd23a', {light:null, shade:null, u:6});
+  for (let i = 0; i < 3; i++) { const x = 150 + i*144, y = 340, w = 132, h = 240, stopped = t >= stops[i], spinning = t > .35 && !stopped;
+    ctx.save(); ctx.shadowColor = '#ff9a2a'; ctx.shadowBlur = 16; ctx.strokeStyle = win ? '#fff6a0' : '#ff9a2a'; ctx.lineWidth = win ? 6 : 4; ctx.strokeRect(x - 3, y - 3, w + 6, h + 6); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.fillStyle = '#fff8e8'; ctx.fillRect(x, y, w, h);
+    const base = stopped ? keys.indexOf(sp.reels[i]) : Math.floor(T*14 + i*1.3), off = stopped || !spinning ? 0 : (T*14 + i*1.3)%1, bounce = stopped ? Math.max(0, .18 - (t - stops[i]))*60 : 0; // 멈출 때 살짝 튕김
+    for (let k = -1; k <= 1; k++) { const kind = keys[((base + k)%3 + 3)%3], yy = y + h/2 + k*h/1.6 + off*h/1.6 - bounce; ctx.globalAlpha = stopped ? (k === 0 ? 1 : .35) : .85; uiSymbol(kind, x + w/2, yy, 100); }
+    ctx.globalAlpha = 1; if (spinning) { ctx.fillStyle = 'rgba(255,255,255,.28)'; for (let k = 0; k < 6; k++) ctx.fillRect(x, y + ((T*900 + k*70 + i*40)%h), w, 6); }
+    const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(.25, 'rgba(0,0,0,0)'); g.addColorStop(.75, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    ctx.restore(); if (stopped) uiLabel(SYMBOL_NAME[sp.reels[i]], x + w/2, y + h - 12, 20, UI.ink, 'center', 900); }
+  ctx.save(); ctx.shadowColor = '#ff3a3a'; ctx.shadowBlur = 14; ctx.fillStyle = '#ff3a3a'; ctx.fillRect(140, 458, 440, 5); ctx.restore(); bulbs(124, 314, 472, 292, 30, ['#ffe14a', '#ffffff']);
+  const pull = t < GIFT_OPEN ? Math.sin(t/GIFT_OPEN*Math.PI) : 0; ctx.fillStyle = '#9aa4b4'; ctx.fillRect(630, 300 + pull*120, 16, 260 - pull*120); ctx.fillStyle = '#5a6070'; ctx.fillRect(626, 540, 24, 40); // 레버: 처음에 당겨짐
+  ctx.save(); ctx.shadowColor = '#ff3a3a'; ctx.shadowBlur = 18; ctx.fillStyle = '#ff3a3a'; ctx.beginPath(); ctx.arc(638, 290 + pull*120, 26, 0, TAU); ctx.fill(); ctx.restore(); ctx.fillStyle = '#ff9a8a'; ctx.fillRect(626, 278 + pull*120, 10, 8);
+  glowTxt(win ? '★ 3개 일치! ★' : done ? '보상!' : 'SPIN...', 360, 680, 46, win ? '#ff3ad8' : '#ff9a2a', win ? '#ff3ad8' : '#ff9a2a', 22);
+  pxBox(130, 712, 460, 172, '#2a1010', {light:null, shade:null}); ctx.save(); ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 8; uiLabel('보상 · 1개 맞음 / 3개 일치', 360, 742, 18, '#ffd23a', 'center', 900); ctx.restore(); // 보상 안내
+  [['pb', '핀볼', '핀볼 조금', '핀볼 ×' + PINBALL.tripleMul], ['ball', '볼', '볼 1개', '레어·유니크 볼'], ['char', '캐릭터', '캐릭터 조각', '캐릭터 해금']].forEach(([k, n, one, three], i) => {
+    const y = 778 + i*36, hl = win && sp.triple === k; if (hl) { ctx.fillStyle = 'rgba(255,210,58,.25)'; ctx.fillRect(140, y - 26, 440, 34); }
+    uiSymbol(k, 170, y - 6, 40); uiLabel(n, 200, y, 20, '#fff', 'left', 900); uiLabel(one, 360, y, 18, '#ffb8a8', 'center', 700); ctx.save(); ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 10; uiLabel(three, 568, y, 18, '#ffd23a', 'right', 900); ctx.restore(); });
+  pxBox(200, 920, 320, 90, '#7a1018', {light:null, shade:'#4a0810', sh:3, u:6}); ctx.fillStyle = '#1a0408'; ctx.fillRect(230, 940, 260, 40);
+  if (win) for (let k = 0; k < 30; k++) { const u = ((t - stops[2])*1.2 + k*.037)%1, x = 360 + Math.sin(k*7.3)*300*u, y = 960 - Math.sin(u*Math.PI)*600 + u*300; uiBall(x, y, 12, [], T*6 + k); } // 당첨: 핀볼이 쏟아짐
+  if (!MS.revealed) uiLabel('화면을 누르면 넘어갑니다', W/2, 1080, 20, '#e6dcff', 'center', 700);
 }
 function drawRewardCard(g) { // 선물 상자에서 나온 보상 카드 (중심이 원점)
   uiPanel(-92, -78, 184, 156, g.kind === 'pb' ? '#d8ecff' : UI.cream);
