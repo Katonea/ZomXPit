@@ -719,7 +719,7 @@ function reset(levelId = 1, tut = false) {
   S = {mode:'lobby', level:L0, t:0, acc:0, hp:c.hp, maxHp:c.hp, lv:1, xp:0, kills:0, inv:0, px:W/2, py:BOT - 120,
     balls:c.start.map(f => ({fns:[...f], lv:1})), items:{}, chambers:[], enemies:[], shots:[], arrows:[], picks:[], zones:[], pillars:[], fx:[], texts:[], toasts:[],
     shocks:[], shake:0, intro:null,
-    wave:0, waveT:waveOf(L0, 0), wavesDone:false, spawnT:0, eliteT:RULE.eliteEvery, bossT:RULE.bossDelay,
+    bfx:null, wave:0, waveT:waveOf(L0, 0), wavesDone:false, spawnT:0, eliteT:RULE.eliteEvery, bossT:RULE.bossDelay,
     fireT:0, eid:0, choices:null, lvQueue:0, mid:null, midAt:null, boss:null, t4At:null, result:null,
     slowT:0, dotT:0, curseT:0, ch:c, chBase:{...c}, shield:0, charmT:0, delayed:[],
     fw:L0.raid ? FIELD.openW : FIELD.startW, fwT:L0.raid ? FIELD.openW : FIELD.startW, fl:0, fr:W, autoAim:S ? S.autoAim : true, aimDir:null, aimHold:false, mx:W/2, my:0, goal:null, joy:null, tgt:null}; // 조준 모드는 판이 바뀌어도 유지
@@ -1034,12 +1034,42 @@ function hurt(e, n, crit) {
   if (n >= 1 && S.texts.length < 120) S.texts.push({x:e.x + (rand()*16 - 8), y:e.y - e.r, s:Math.round(n), t:.6, c:crit ? '#ffd34a' : '#fff', big:crit});
   if (e.hp <= 0) kill(e);
 }
+const BFX = mid => mid ? {ko:.35, boom:.9} : {ko:.5, boom:1.3}; // 보스 처치 연출 시각: K.O. 정지 → 연쇄 폭발 → 대폭발
+function bossFxStep(dt) { // true = 이번 스텝은 전투를 멈춤 (최종 보스는 연출 내내, 중간 보스는 K.O. 순간만)
+  const b = S.bfx, e = b.e, P = BFX(b.mid); b.t += dt; S.shake = Math.max(0, S.shake - 40*dt);
+  if (b.t >= P.ko && b.t < P.boom) { const i = Math.floor((b.t - P.ko)/.12); if (i > b.n - 1 && i < 6) { b.n = i + 1; sfx('kill', .02); tick(25); S.shake = Math.max(S.shake, 8); } } // 몸 곳곳 작은 폭발
+  if (!b.boom && b.t >= P.boom) { b.boom = true; S.shake = b.mid ? 16 : 26; buzz([40, 30, 120]); sfx('boss');
+    if (e.type === 'rival') burst(e.x, e.y, e.rival.hue, 70); else gore(e.x, e.y, 50, true); }
+  if (b.t >= b.T) { S.bfx = null; if (!b.mid) { endRun(true); return true; } return false; }
+  return !b.mid || b.t < P.ko;
+}
+const bhash = n => { const x = Math.sin(n*127.1)*43758.5453; return x - Math.floor(x); };
+function boomPx(x, y, r, a = 1) { // 도트 불덩이: 8px 칸, 가운데 흰색 → 노랑 → 주황 → 빨강
+  if (a <= 0 || r <= 0) return; const g = 8; ctx.globalAlpha = Math.min(1, a);
+  for (let j = -r; j <= r; j += g) for (let i = -r; i <= r; i += g) { const d = Math.hypot(i, j)/r + (bhash(i*.7 + j*1.3) - .5)*.25; if (d > 1) continue;
+    ctx.fillStyle = d < .3 ? '#fff8e0' : d < .55 ? '#ffe14a' : d < .8 ? '#ff8a2a' : '#c8301a'; ctx.fillRect(Math.round((x + i)/g)*g, Math.round((y + j)/g)*g, g, g); }
+  ctx.globalAlpha = 1;
+}
+function drawBossFx() { // 시안 6: K.O.(어둡게 + 하얀 몸) → 깜빡이며 연쇄 폭발 → 번쩍 + 대폭발·충격파 → (최종 보스) 핀볼 분수 + 처치!
+  const b = S.bfx, e = b.e, d = ENEMY[e.type], t = b.t, P = BFX(b.mid), ez = v => 1 - (1 - Math.min(1, Math.max(0, v)))**3;
+  const body = hit => { if (e.type === 'rival') blit(rivalSprite(e.rival, hit ? 'hit' : '', 0), e.x, e.y, e.r*2.2/16); else blit(SPR[e.type + (hit ? '_hit' : '')] || SPR[e.type], e.x, e.y, Math.max(1.5, Math.round(d.ps/2))); };
+  if (t < P.ko) { ctx.fillStyle = 'rgba(10,0,20,.5)'; ctx.fillRect(-40, -40, W + 80, H + 80); body(true); const k = Math.min(1, t/.15); uiTxt('K.O.', e.x, e.y - e.r - 30 - k*16, Math.round(70 + (1 - k)*40), '#fff'); return; }
+  if (t < P.boom) { const v = t - P.ko; body(Math.floor(v*14)%2); for (let i = 0; i < 6; i++) { const k = (v - i*.12)/.3; if (k > 0 && k < 1) boomPx(e.x + (bhash(i + 1) - .5)*e.r*2.2, e.y + (bhash(i + 9) - .5)*e.r*2.2, 24 + 32*Math.sin(k*Math.PI)); } return; }
+  const v = t - P.boom, big = b.mid ? .6 : 1;
+  if (v < .08) { ctx.fillStyle = '#fff'; ctx.globalAlpha = 1 - v*10; ctx.fillRect(-40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
+  if (v < .8) { boomPx(e.x, e.y, (50 + ez(v*3)*e.r*2.6)*big, 1 - v*1.25); ctx.globalAlpha = Math.max(0, 1 - v*1.25); ctx.strokeStyle = '#fff6c0'; ctx.lineWidth = 12; ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r*.6, (80 + v*600)*big, (80 + v*600)*big*.62, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
+  if (!b.mid) { for (let i = 0; i < 24; i++) { const q = -Math.PI/2 + (bhash(i + 3) - .5)*2.4, sp = 360 + bhash(i + 7)*360, a = Math.min(v, .9), fly = Math.max(0, v - .9 - i*.012); // 핀볼 분수 → 위로 빨려 감
+      let x = e.x + Math.cos(q)*sp*a*.55, y = e.y + Math.sin(q)*sp*a + 900*a*a; if (y > BOT - 20) y = BOT - 20;
+      if (fly > 0) { const f = ez(fly*2.5); x += (W/2 - x)*f; y += (TOP - y)*f; if (f >= 1) continue; }
+      ctx.fillStyle = UI.ink; ctx.beginPath(); ctx.arc(x, y, 12, 0, TAU); ctx.fill(); ctx.fillStyle = '#c8ccdc'; ctx.beginPath(); ctx.arc(x, y, 10, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(x - 5, y - 6, 4, 4); }
+    const k = v - .15; if (k > 0) { ctx.save(); ctx.translate(W/2, 360); const z = 1 + (1 - ez(k*3))*1.2; ctx.scale(z, z); ctx.globalAlpha = Math.min(1, k*4); uiTxt('처치!', 0, 0, 84, '#ffd23a'); ctx.restore(); ctx.globalAlpha = 1; } }
+}
 function kill(e) {
   const d = ENEMY[e.type];
   e.dead = true; S.kills++; sfx('kill', .04); if (e.type !== 'rival') itemKill(e);
-  if (e.type === 'rival') burst(e.x, e.y, e.rival.hue, 70); else gore(e.x, e.y, d.boss ? 50 : e.elite ? 24 : 12, d.boss || e.elite);
-  if (d.boss) { S.shake = 22; buzz(VIB.boss); }
-  if (d.boss && !d.mid) { endRun(true); return; }
+  if (!d.boss) gore(e.x, e.y, e.elite ? 24 : 12, e.elite);
+  if (d.boss) { S.bfx = {e, t:0, mid:!!d.mid, T:d.mid ? 1.3 : 2.8, boom:false, n:0}; buzz(VIB.boss); sfx('boss'); } // 보스 처치 연출 (bossFxStep·drawBossFx)
+  if (d.boss && !d.mid) return; // 결과 화면은 연출이 끝난 뒤
   if (d.mid) { // 중간 보스 처치: 보드가 넓어진다
     S.midAt = S.t; S.fwT = FIELD.openW; toast('길이 열렸다! 보드가 넓어진다');
     S.picks.push({x:e.x - 20, y:e.y, kind:'ball', t:0}, {x:e.x + 20, y:e.y, kind:'gear', t:0}); // 중간 보스: 볼 캡슐 + 장비 캡슐
@@ -1253,6 +1283,7 @@ function chargeStep(e, d, dt, m, dx, dy, dist, touch) { // 기어오는 좀비: 
 }
 function update(dt) {
   if (S.hitstop > 0) { S.hitstop -= dt; return; } // 히트스톱: 큰 타격·조합 순간 잠깐 멈춤
+  if (S.bfx && bossFxStep(dt)) return;
   S.t += dt; S.inv = Math.max(0, S.inv - dt);
   S.shake = Math.max(0, S.shake - 40*dt);
   if (S.level.raid && S.t >= RAID.time) { endRun(false); return; } // 침략은 1분 안에 끝내야 한다
@@ -1678,6 +1709,7 @@ function drawMain() {
     else { ctx.globalAlpha = .35 + .2*Math.sin(p.t*8); ctx.beginPath(); ctx.arc(p.x, y, 22, 0, TAU); ctx.fillStyle = '#9ae8ff'; ctx.fill(); ctx.globalAlpha = 1; blit(SPR_UP[Math.floor(p.t*6)%2], p.x, y, 2.5); } // 톱니 코어: 돌고 파랗게 빛남
   }
   for (const e of [...S.enemies].sort((a, b) => a.y - b.y)) drawEnemy(e); // 겹칠 때 아래쪽(앞, 나와 가까운) 좀비가 뒤 좀비를 덮음
+  if (S.bfx) drawBossFx();
   for (const a of S.arrows) { // 적 투사체: 군인 좀비 = 가시 총알 (진행 방향으로 회전), 침략 상대 = 볼 색의 별. 내 공(둥근 공)과 실루엣으로 구분
     const f = a.fns, fr = Math.floor(S.t*8)%2;
     if (!f) { ctx.save(); ctx.translate(Math.round(a.x), Math.round(a.y)); ctx.rotate(Math.atan2(a.vy, a.vx)); blit(a.k === 'syr' ? SPR_SYR : SPR_BULLET, 0, 0, 3); ctx.restore(); continue; }
@@ -2292,7 +2324,8 @@ function cardsUI() {
 }
 
 const FREE_TILE = i => ({x:36 + (i%3)*220, y:420 + Math.floor(i/3)*142, w:208, h:130});
-const ITEM_TILE = i => ({x:36 + i*220, y:S.fu && S.fu.gear ? 520 : 420 + Math.ceil(freeCand().length/3)*142 + 60, w:208, h:186});
+const ITEM_TILE = i => S.fu && S.fu.gear ? {x:i === 2 && S.fu.items.length === 3 ? 203 : 36 + (i%2)*334, y:440 + Math.floor(i/2)*262, w:314, h:242} // 장비 캡슐: 큰 카드 2열 (3개면 마지막은 가운데)
+  : {x:36 + i*220, y:420 + Math.ceil(freeCand().length/3)*142 + 60, w:208, h:186};
 const freeBalls = () => S.fu && S.fu.gear ? [] : freeCand(); // 장비 캡슐은 볼 강화 칸 없음
 const ITEM_KEY = 'QWE';
 function fitLabel(s, x, y, size, maxW, c, al, w) { ctx.font = (w || 700) + ' ' + size + 'px ' + FONT; const k = Math.min(1, maxW/ctx.measureText(s).width); uiLabel(s, x, y, Math.floor(size*k), c, al, w); }
@@ -2320,10 +2353,12 @@ function freeupUI() { // 무료 강화: 어두워지고 금빛 빛살이 도는 
       uiCard(r.x, r.y, r.w, r.h, evo ? '#fff4c0' : UI.cream, evo ? '#ffb43a' : it.col, 36, true, evo ? 8 : 6);
       uiLabel(evo ? '진화!' : n ? 'Lv' + n + ' → Lv' + (n + 1) : '새 아이템', r.x + r.w/2, r.y + 26, 17, '#fff', 'center', 900);
       if (evo) { uiItem(it.evo[0], r.x + 40, r.y + 66, 15); uiItem(it.evo[1], r.x + r.w - 40, r.y + 66, 15); }
-      uiItem(o.id, r.x + r.w/2, r.y + 78, 27); uiKeyBadge(r.x + 22, evo ? r.y + 100 : r.y + 58, ITEM_KEY[i]);
-      fitLabel(it.name, r.x + r.w/2, r.y + 136, 21, r.w - 20, UI.ink, 'center', 900);
+      const B = r.h > 200; // 큰 카드(장비 캡슐): 그림·글자 크게
+      uiItem(o.id, r.x + r.w/2, r.y + (B ? 92 : 78), B ? 36 : 27); uiKeyBadge(r.x + 22, evo ? r.y + 100 : r.y + 58, ITEM_KEY[i]);
+      fitLabel(it.name, r.x + r.w/2, r.y + (B ? 164 : 136), B ? 27 : 21, r.w - 20, UI.ink, 'center', 900);
       const ds = evo ? it.d() : itemDesc(o.id, n + 1), cut = ds.indexOf(', ');
-      if (cut > 0 && ds.length > 15) { fitLabel(ds.slice(0, cut), r.x + r.w/2, r.y + 156, 14, r.w - 16, '#6a5a8a', 'center', 700); fitLabel(ds.slice(cut + 2), r.x + r.w/2, r.y + 172, 14, r.w - 16, '#6a5a8a', 'center', 700); }
+      if (B) { const ls = wrapLines(ds, 19, r.w - 28, 700).slice(0, 2); ls.forEach((l, k) => uiLabel(l, r.x + r.w/2, r.y + (ls.length > 1 ? 196 : 206) + k*24, 19, '#6a5a8a', 'center', 700)); }
+      else if (cut > 0 && ds.length > 15) { fitLabel(ds.slice(0, cut), r.x + r.w/2, r.y + 156, 14, r.w - 16, '#6a5a8a', 'center', 700); fitLabel(ds.slice(cut + 2), r.x + r.w/2, r.y + 172, 14, r.w - 16, '#6a5a8a', 'center', 700); }
       else fitLabel(ds, r.x + r.w/2, r.y + 162, 15, r.w - 16, '#6a5a8a', 'center', 700);
     });
   });
@@ -3126,6 +3161,7 @@ function selfTest() {
     S.fu.left = 1; freeItem(ro[0]); ok(S.items.cornucopia === 1 && !S.items.rattle && S.chambers.length === nc + 3 && S.mode === 'play', '아이템: 진화하면 한 칸으로 합쳐짐');
     S.items = {a:1, b:1, c:1, d:1}; for (const k of 'abcd') ITEM[k] = {v:[1, 1, 1]}; ok(itemRoll().every(o => o.kind !== 'new'), '아이템: 칸이 차면 새 아이템 없음'); for (const k of 'abcd') delete ITEM[k]; S.items = {};
     const quiet = () => { S.waveT = S.spawnT = S.eliteT = 1e9; }; // 웨이브 진행 멈춤
+    const endFx = () => { for (let i = 0; i < 2000 && S.bfx; i++) update(STEP); }; // 보스 처치 연출을 끝까지
     startLevel(1); quiet(); S.px = W/2; S.py = BOT - 100; S.inv = 0; { const mg = spawn('mage'); mg.x = W/2; mg.y = mg.stopY = S.py - 300; mg.castT = 0; mg.hp = mg.max = 1e9; const h0 = S.hp; for (let i = 0; i < 120*1.6; i++) { S.px = W/2; S.py = BOT - 100; update(STEP); } ok(S.hp < h0, '화염방사: 예고선 뒤 일직선 화염 피해'); }
     // 공 순환: 나가 있는 칸은 발사되지 않고, 바닥에 닿은 공도 회수된다
     startLevel(1); quiet(); const k = spawn('knight'); k.hp = k.max = 1e9;
@@ -3163,9 +3199,9 @@ function selfTest() {
     while (!S.wavesDone) { S.waveT = 0; update(STEP); }
     for (let i = 0; i < 120*RULE.bossDelay + 10; i++) update(STEP); // 소수 오차로 한 스텝 모자랄 때가 있어 여유
     ok(S.boss && S.boss.type === LEVELS[0].boss, '웨이브 종료 + 중간 보스 처치 → 최종 보스');
-    hurt(S.boss, 1e9);
+    hurt(S.boss, 1e9); ok(S.mode === 'play' && S.bfx, '보스 처치 연출 중엔 결과 전'); endFx();
     ok(S.mode === 'result' && S.result.win && S.result.first && S.result.pinball === 22 && META.maxLevel === 1, '클리어 보상·해금');
-    startLevel(1); hurt(spawn('captain'), 1e9);
+    startLevel(1); hurt(spawn('captain'), 1e9); endFx();
     ok(S.result.pinball === 9 && !S.result.first, '재클리어 보상');
     // 조준: 자동 = 가장 가까운 적, 수동 = 커서, 조준 스틱 = 스틱 방향, 버튼으로 전환
     startLevel(1); S.waveT = S.spawnT = S.eliteT = 1e9; S.px = W/2; S.py = BOT - 100;
@@ -3275,9 +3311,9 @@ function selfTest() {
     ok(S.level.raid && S.fw === FIELD.openW && S.level.midAfter === null, '침략 레벨 구성');
     ok(todayRivals().length === 3 && todayRivals().every((r, i) => r.tier === i + 1), '매일 난이도별 한 성');
     const rb = spawn('rival'); ok(rb.rival === rv, '상대 성 연결');
-    hurt(rb, 1e9); ok(S.mode === 'verdict' && S.result.win && META.pinball === RAID.pinball[1] && META.raidWins === 1, '침략 승리 → 살릴지 죽일지 선택');
+    hurt(rb, 1e9); endFx(); ok(S.mode === 'verdict' && S.result.win && META.pinball === RAID.pinball[1] && META.raidWins === 1, '침략 승리 → 살릴지 죽일지 선택');
     raidVerdict('spare'); ok(S.mode === 'result' && META.pinball === RAID.pinball[1] + RAID.sparePinball[1] && S.result.choice === 'spare', '살려주면 핀볼만 (골드 없음)');
-    reset(raidLevel(rv)); S.mode = 'play'; hurt(spawn('rival'), 1e9); const cntBalls = () => Object.values(META.bag).reduce((a, o) => a + o.n + 1, 0), n0 = cntBalls(), pbK = META.pinball; raidVerdict('kill');
+    reset(raidLevel(rv)); S.mode = 'play'; hurt(spawn('rival'), 1e9); endFx(); const cntBalls = () => Object.values(META.bag).reduce((a, o) => a + o.n + 1, 0), n0 = cntBalls(), pbK = META.pinball; raidVerdict('kill');
     ok(cntBalls() === n0 + 1 && S.result.ball && META.pinball === pbK, '처치하면 랜덤 볼 1개 (핀볼 변화 없음)');
     reset(raidLevel(rv)); S.mode = 'play'; const pb0 = META.pinball; S.t = RAID.time - .005; update(STEP); ok(S.mode === 'result' && !S.result.win && META.pinball === pb0 + 1, '60초 초과 패배');
     reset(raidLevel(rv)); S.mode = 'play'; S.px = S.fl + 200; S.py = BOT - 60;
