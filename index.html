@@ -1582,7 +1582,8 @@ function drawEnemy(e) {
 // ---------- 튜토리얼 (한 번씩만, META.tut에 기록) ----------
 const tutDone = k => { if (!META.tut) META.tut = {seen:{}}; if (!META.tut[k]) { META.tut[k] = 1; saveMeta(); } };
 const tutSeen = k => META.tut && META.tut[k];
-function tutHint(text, tx, ty, bx, by) { // 말풍선(bx, by 중심) + 목표(tx, ty)를 가리키며 통통 튀는 화살표. tx가 null이면 말풍선만
+let TUTSHOWN = []; // 이번 프레임에 보인 안내 문구 (터치하면 닫힘)
+function tutHint(text, tx, ty, bx, by) { if (META.tut && META.tut.off && META.tut.off[text]) return; TUTSHOWN.push(text); // 말풍선(bx, by 중심) + 목표(tx, ty)를 가리키며 통통 튀는 화살표. tx가 null이면 말풍선만
   const T = performance.now()/1000, lines = wrapLines(text, 24, 460, 900), h = 30 + lines.length*32, w = 520;
   const X = Math.max(20, Math.min(W - w - 20, bx - w/2)), Y = by - h/2;
   pxBox(X, Y, w, h, '#fff4d6', {drop:'rgba(10,2,30,.55)', shade:'#e0c8a0', sh:2});
@@ -1595,6 +1596,7 @@ function tutHint(text, tx, ty, bx, by) { // 말풍선(bx, by 중심) + 목표(tx
 }
 const tabTarget = id => [tabCx(id), TAB_Y + TAB_H/2];
 function drawTut() {
+  TUTSHOWN = [];
   if (TITLE.on || S.mode === 'settings') return;
   const m = S.mode;
   if (m === 'play' && S.tutRun && !tutSeen('fight')) { // 1단계: 첫 전투
@@ -2985,6 +2987,7 @@ const GEAR = {x:12, y:TOP + 38, w:56, h:52}; // 전투 중 설정 버튼 (왼쪽
 const AIM_BTN = {x:W - 150, y:TOP + 30, w:134, h:48}; // 전투 중 조준 모드 전환 버튼
 function tap(x, y) {
   audInit(); // 브라우저 정책상 첫 터치 때 소리를 켠다
+  if (TUTSHOWN.length) { META.tut.off = META.tut.off || {}; for (const t of TUTSHOWN) META.tut.off[t] = 1; TUTSHOWN = []; saveMeta(); } // 안내 문구는 아무 데나 누르면 닫힘 (누른 동작은 그대로 처리)
   if (TITLE.on) { TITLE.on = false; sfx('click'); if (isTutorial(1)) startLevel(1); return true; } // 새 유저: 타이틀 다음 곧바로 레벨 1
   const hit = b => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h;
   if (S.mode === 'settings') { settingsTap(x, y, hit); return true; }
