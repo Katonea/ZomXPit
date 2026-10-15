@@ -1850,7 +1850,7 @@ function uiTopBar() { // 상단: 클리어 레벨 배지 + 보유 핀볼 + 선�
   ctx.fillStyle = 'rgba(42,20,80,.6)'; ctx.fillRect(0, 0, W, 106);
   const g = ctx.createLinearGradient(0, 14, 0, 94); g.addColorStop(0, '#ffc44a'); g.addColorStop(1, '#e8731a');
   ctx.beginPath(); ctx.arc(56, 54, 40, 0, TAU); ctx.fillStyle = g; ctx.fill(); uiLine(UI.ink, 6); uiTxt(String(META.maxLevel), 56, 68, 40);
-  uiPill(108, 22, 400, 64, '#4a2394'); uiBall(142, 54, 22, []); uiTxt(String(META.pinball), 490, 66, 36, '#fff', 'right');
+  uiPill(108, 22, 400, 64, '#4a2394'); uiBall(142, 54, 22, []); uiTxt(String(META.pinball - (S.mode === 'lobby' ? LOBBY.pend || 0 : 0)), 490, 66, 36, '#fff', 'right'); // 날아오는 중인 핀볼은 닿을 때 올라감
   ctx.beginPath(); ctx.arc(668, 54, 34, 0, TAU); ctx.fillStyle = '#7a45d8'; ctx.fill(); uiLine(UI.ink, 5); uiHero(668, 54, 17, humanLook(META.sel), '', 0);
 }
 // 왼쪽 캐릭터·볼, 가운데 로비(화면 정중앙, 넓게), 오른쪽 핀볼. x·w는 탭 칸(터치 영역)
@@ -2183,7 +2183,8 @@ function updateMachine(dt) {
   for (const f of MS.top) { f.t -= dt; if (f.k === 'dot') { f.x += f.vx*dt; f.y += f.vy*dt; f.vy += 700*dt; } } MS.top = MS.top.filter(f => f.t > 0);
   if (MS.lvFx && (MS.lvFx.t -= dt) <= 0) MS.lvFx = null;
   for (const ic of MS.icons) { ic.t += dt; if (ic.t >= ic.T) { ic.done = true; arriveXp(ic.val || 1); } } MS.icons = MS.icons.filter(ic => !ic.done);
-  for (const r of MS.rew) { r.t += dt; if (r.t >= r.hold + r.fly && !r.done) { r.done = true; arriveRew(r); } }
+  for (const r of MS.rew) { r.t += dt; if (r.g.kind === 'pb' && r.t >= r.hold && !r.done) { r.done = true; pbBurst(r.x, r.y, r.gv, PB_TARGET, v => { MS.pend = Math.max(0, MS.pend - v); }); continue; } if (r.t >= r.hold + r.fly && !r.done) { r.done = true; arriveRew(r); } }
+  pbStep(dt);
   if (MS.phase === 'drop') {
     const more = (MS.fixed != null ? MS.launched < MS.fixed : (MS.launched < PINBALL.cycleBalls && MS.hold)) && META.pinball >= MS.mult; // 누르고 있는 동안만 (고정 발사는 정해진 수만큼)
     if (more && (MS.dropT -= dt) <= 0) { MS.dropT = PINBALL.dropEvery; launchOne(); }
@@ -2196,7 +2197,7 @@ function updateMachine(dt) {
   } else if (MS.phase === 'spin') {
     MS.spinT += dt; const end = spinStops(MS.plan.spins[MS.spin])[2];
     if (MS.spinT > end && !MS.revealed) revealGot(MS.plan.spins[MS.spin]);
-    if (MS.revealed && MS.rew.every(r => r.done) && MS.spinT > end + .3) nextSpin();
+    if (MS.revealed && MS.rew.every(r => r.done) && !PBFX.list.length && MS.spinT > end + .3) nextSpin();
   }
 }
 // 연출 물리: 핀·범퍼에 실제로 튕기다가 아래쪽(y 640~)에서 정해진 슬롯 쪽으로 부드럽게 유도
@@ -2410,7 +2411,7 @@ const LB = {gear:{x:538, y:20, w:68, h:68}, lvl:{x:30, y:1000, w:320, h:140}, ra
 const hm = h => Math.floor(h) + '시간 ' + Math.floor(h%1*60) + '분';
 function lobbyTap(hit) {
   if (LOBBY.pop) {
-    if (hit(LB.ok)) { claimAuto(LOBBY.pop.n); LOBBY.pop = null; LOBBY.flyT = performance.now(); } else if (!hit(LB.panel)) LOBBY.pop = null;
+    if (hit(LB.ok)) { const n = LOBBY.pop.n; claimAuto(n); LOBBY.pend = (LOBBY.pend || 0) + n; pbBurst(360, 640, n, [142, 54], v => { LOBBY.pend = Math.max(0, LOBBY.pend - v); }); LOBBY.pop = null; } else if (!hit(LB.panel)) LOBBY.pop = null;
     return;
   }
   if (hit(LB.gear)) { openSettings(); return; }
@@ -2423,7 +2424,7 @@ function drawLobby() {
   ctx.fillStyle = 'rgba(42,20,80,.6)'; ctx.fillRect(0, 0, W, 106);
   const bg = ctx.createLinearGradient(0, 14, 0, 94); bg.addColorStop(0, '#ffc44a'); bg.addColorStop(1, '#e8731a');
   ctx.beginPath(); ctx.arc(56, 54, 40, 0, TAU); ctx.fillStyle = bg; ctx.fill(); uiLine(UI.ink, 6); uiTxt(String(META.maxLevel), 56, 68, 40);
-  uiPill(108, 22, 400, 64, '#4a2394'); uiBall(142, 54, 22, []); uiTxt(String(META.pinball), 490, 66, 36, '#fff', 'right');
+  uiPill(108, 22, 400, 64, '#4a2394'); uiBall(142, 54, 22, []); uiTxt(String(META.pinball - (LOBBY.pend || 0)), 490, 66, 36, '#fff', 'right'); // 날아오는 중인 핀볼은 닿을 때 올라감
   ctx.beginPath(); ctx.arc(668, 54, 34, 0, TAU); ctx.fillStyle = '#7a45d8'; ctx.fill(); uiLine(UI.ink, 5); uiHero(668, 54, 17, humanLook(META.sel), '', 0);
   uiGear(572, 54, 27);
   drawIdle();
@@ -2440,8 +2441,7 @@ function drawLobby() {
     for (let k = 0; k < RAIDT.max; k++) { ctx.beginPath(); ctx.arc(B.x + 140 + k*24, B.y + 116, 8, 0, TAU); ctx.fillStyle = k < rt ? '#ffd23a' : 'rgba(40,10,40,.45)'; ctx.fill(); uiLine(UI.ink, 3); } // 침략권 칸
     uiTxt(rt >= RAIDT.max ? '침략권 가득' : rt + '/' + RAIDT.max + ' · ' + mmss(raidNextIn()), B.x + 300, B.y + 34, 16, '#ffe6d8', 'right'); }
   tabBar('lobby');
-  const fl = (performance.now() - LOBBY.flyT)/1000; // 받은 핀볼이 위쪽 소지 핀볼로 날아감
-  if (fl < 1.2) for (let i = 0; i < 8; i++) { const k = Math.max(0, Math.min(1, (fl - i*.07)/.6)), e = 1 - (1 - k)*(1 - k); if (k > 0 && k < 1) uiBall(360 + (142 - 360)*e, 620 + (54 - 620)*e, 16, []); }
+  { const now = performance.now(); pbStep(Math.min(.05, Math.max(0, (now - (LOBBY.pbT || now))/1000))); LOBBY.pbT = now; pbDraw(); } // 받은 핀볼이 팡 흩어져 위쪽 보유 핀볼로 날아감
   if (LOBBY.pop) {
     const P = LB.panel, T = performance.now()/1000; uiPopup(P.x, P.y, P.w, P.h);
     ctx.save(); uiPath(P.x + 4, P.y + 4, P.w - 8, P.h - 8, 26); ctx.clip(); uiRays(610, .18, T); ctx.restore();
@@ -2486,6 +2486,29 @@ function drawRewardCard(g) { // 선물 상자에서 나온 보상 카드 (중심
   else if (g.kind === 'pb') { uiBall(0, -22, 34, []); uiTxt('+' + g.v, 0, 52, 30, '#bfe4ff'); uiLabel('핀볼', 0, 74, 16, '#2a6ad0', 'center', 900); }
   else { uiHero(0, -26, 30, humanLook(g.id), 'happy'); uiLabel(CHARS.find(c => c.id === g.id).name + (g.kind === 'unlock' || g.unlocked ? ' 해금!' : g.dup ? ' (핀볼로)' : ' 조각 +' + (g.n || 1)), 0, 52, 17, g.kind === 'unlock' || g.unlocked ? '#e8731a' : UI.ink, 'center', 900); }
 }
+// 핀볼 보상 연출 (뚜까펫풍): +N 핀볼이 팡 하고 작은 핀볼 여러 개로 흩어졌다가 차례로 보유 핀볼 표시로 날아감.
+// 핀볼 1개 = 1개씩, 많으면 최대 20개로 나눠 하나가 여러 개 값을 가짐. 닿을 때마다 arrive(값)로 표시 숫자가 올라감
+const PBFX = {list:[], fx:[]};
+function pbBurst(x, y, v, tgt, arrive) {
+  const n = Math.max(1, Math.min(20, Math.round(v))); let left = Math.round(v);
+  for (let k = 0; k < n; k++) { const val = k === n - 1 ? left : Math.floor(v/n); left -= val; const an = Math.random()*TAU, sp = 260 + Math.random()*320;
+    PBFX.list.push({x, y, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp - 120, age:0, wait:.32 + k*.04, val, tgt, arrive, rot:Math.random()*TAU}); }
+  PBFX.fx.push({k:'ring', x, y, r:90, t:.35, T:.35, c:'#fff6c0'}, {k:'txt', x, y, s:'+' + Math.round(v), t:.7, T:.7}); sfx('gift');
+}
+function pbStep(dt) {
+  dt = Math.max(0, dt);
+  for (const p of PBFX.list) { p.age += dt; p.rot += 14*dt;
+    if (p.age < p.wait) { const f = Math.pow(.02, dt); p.vx *= f; p.vy *= f; p.x += p.vx*dt; p.y += p.vy*dt; p.sx = p.x; p.sy = p.y; } // 팡: 흩어지며 멈춤
+    else { const u = Math.min(1, (p.age - p.wait)/.42), e = u*u; p.x = p.sx + (p.tgt[0] - p.sx)*e; p.y = p.sy + (p.tgt[1] - p.sy)*e - Math.sin(u*Math.PI)*40; // 표시로 빨려 들어감
+      if (u >= 1) { p.gone = true; p.arrive(p.val); sfx('coin', .03); PBFX.fx.push({k:'ring', x:p.tgt[0], y:p.tgt[1], r:34, t:.2, T:.2, c:'#bfe4ff'}); } } }
+  PBFX.list = PBFX.list.filter(p => !p.gone); for (const f of PBFX.fx) f.t -= dt; PBFX.fx = PBFX.fx.filter(f => f.t > 0);
+}
+function pbDraw() {
+  for (const f of PBFX.fx) { const a = f.t/f.T; ctx.globalAlpha = a;
+    if (f.k === 'ring') { ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1.3 - a*.6), 0, TAU); ctx.strokeStyle = f.c; ctx.lineWidth = 8*a + 1; ctx.stroke(); }
+    else uiTxt(f.s, f.x, f.y - (1 - a)*50, 40, '#bfe4ff'); ctx.globalAlpha = 1; }
+  for (const p of PBFX.list) uiBall(p.x, p.y, 10, [], p.rot);
+}
 function drawFlights() { // 화면 좌표 연출: 날아가는 경험치 아이콘, 보상 카드, 레벨 업
   for (const f of MS.top) { const a = Math.max(0, f.t/f.T); ctx.globalAlpha = a; if (f.k === 'dot') { ctx.fillStyle = f.c; ctx.fillRect(f.x - 3, f.y - 3, 6, 6); } else { ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1 - a*.6), 0, TAU); ctx.strokeStyle = f.c; ctx.lineWidth = 6*a + 1; ctx.stroke(); } ctx.globalAlpha = 1; }
   for (const ic of MS.icons) {
@@ -2497,6 +2520,7 @@ function drawFlights() { // 화면 좌표 연출: 날아가는 경험치 아이�
     if (r.t > r.hold) { const u = Math.min(1, (r.t - r.hold)/r.fly), e = u*u*(3 - 2*u), d = r.g.kind === 'ball' ? BALL_TAB : r.g.kind === 'pb' ? PB_TARGET : CHAR_TAB; x += (d[0] - x)*e; y += (d[1] - y)*e; sc = 1 - .75*e; }
     ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); drawRewardCard(r.g); ctx.restore();
   }
+  pbDraw();
   if (MS.lvFx) { const f = MS.lvFx, k = Math.min(1, (1.8 - f.t)/.25); ctx.save(); ctx.globalAlpha = Math.min(1, f.t/.4); ctx.translate(W/2, 160); ctx.scale(1 + (1 - k)*.6, 1 + (1 - k)*.6); uiTxt('레벨 업! Lv.' + f.lv, 0, 0, 52, UI.gold); uiTxt('공격 +' + PLV.atk + ' · HP +' + PLV.hp + ' · 방어 +' + PLV.def, 0, 44, 22, '#fff'); ctx.restore(); }
 }
 // ---------- 출전 볼 선택 (레벨·침략에 들어갈 때마다) ----------
