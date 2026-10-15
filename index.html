@@ -968,8 +968,8 @@ function ballCapsule() { // 볼 캡슐: 게임이 멈추고 룰렛이 내 볼 �
 const BC_SPIN = .85, BC_POP = .9; // 룰렛 도는 시간 / 결과 카드 보여 주는 시간
 function bcRoll() { const c = S.balls, cand = freeCand(), tg = cand[Math.floor(rand()*cand.length)], ti = c.indexOf(tg), sl = TAU/c.length; // 원판: 두 바퀴 이상 돌다 목표 칸이 위 화살표에 멈춤
   const a0 = S.bc.a1 ?? 0, base = -Math.PI/2 - (ti + .5)*sl, a1 = base + TAU*Math.ceil((a0 + TAU*2 - base)/TAU);
-  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1});
-  if (cand.length === 1) Object.assign(S.bc, {a0:a1, t:BC_SPIN, last:0}); } // 올릴 볼이 하나뿐이면 룰렛 없이 바로 강화 연출
+  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1, solo:cand.length === 1});
+  if (cand.length === 1) Object.assign(S.bc, {a0:a1, t:BC_SPIN, last:0}); } // 올릴 볼이 하나뿐이면 룰렛 없이 바로 강화 연출 (원판도 안 그림)
 const bcAng = () => { const b = S.bc, k = Math.min(1, b.t/BC_SPIN); return b.ph === 'spin' ? b.a1 - (b.a1 - b.a0)*(1 - k)**3 : b.a1; };
 function bcIdx() { const n = S.balls.length, sl = TAU/n; return Math.floor((((-Math.PI/2 - bcAng())%TAU + TAU)%TAU)/sl)%n; } // 화살표 아래 칸
 function ballCapStep(dt) { const b = S.bc; b.t += dt;
@@ -983,14 +983,16 @@ function ballCapUI() { // 볼 캡슐: 원형 룰렛(내 볼 칸) → 멈춘 칸 
   ctx.fillStyle = 'rgba(20,8,50,.88)'; ctx.fillRect(0, 0, W, H); uiRays(cy, .1, T);
   uiRibbon(360, 200, 360, '볼 캡슐!', 'pink', 46);
   for (let i = 0; i < b.total; i++) uiStar(360 + (i - (b.total - 1)/2)*58, 270, 21, i < b.left ? '#ff9ac8' : '#6a5a90');
-  for (let i = 0; i < n; i++) { const a = ang + i*sl, o = S.balls[i], mx = o.lv >= RULE.maxLv; // 칸: 최대 Lv 볼은 어둡게
+  if (b.solo) { const o = S.balls[b.at ?? S.balls.indexOf(b.tg)], s = 1 + Math.max(0, .35 - b.t)*1.2; uiBallGlow(cx, cy, 120*s); uiBall(cx, cy, 110*s, o.fns, T*3); } // 한 개뿐: 원판 없이 그 볼만 크게
+  else for (let i = 0; i < n; i++) { const a = ang + i*sl, o = S.balls[i], mx = o.lv >= RULE.maxLv; // 칸: 최대 Lv 볼은 어둡게
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a, a + sl); ctx.closePath(); ctx.fillStyle = pop && i === cur && Math.floor(T*10)%2 ? '#ffd23a' : mx ? '#3a2a5a' : i%2 ? '#6a3ac8' : '#8a55e8'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = UI.ink; ctx.stroke();
     const am = a + sl/2; ctx.globalAlpha = mx ? .45 : 1; uiBall(cx + Math.cos(am)*R*.66, cy + Math.sin(am)*R*.66, Math.min(36, R*sl*.24), o.fns); ctx.globalAlpha = 1; }
+  if (!b.solo) {
   ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, TAU); ctx.lineWidth = 12; ctx.strokeStyle = '#ffd23a'; ctx.stroke();
   for (let i = 0; i < 24; i++) { const a = i/24*TAU; px(cx + Math.cos(a)*(R + 6), cy + Math.sin(a)*(R + 6), 8, (Math.floor(T*12) + i)%2 ? '#fff6a0' : '#c8701a'); } // 테두리 전구
   ctx.beginPath(); ctx.arc(cx, cy, 32, 0, TAU); ctx.fillStyle = '#ffd23a'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = UI.ink; ctx.stroke();
   ctx.fillStyle = UI.ink; ctx.beginPath(); ctx.moveTo(cx, cy - R + 30); ctx.lineTo(cx - 28, cy - R - 32); ctx.lineTo(cx + 28, cy - R - 32); ctx.fill(); // 위 화살표
-  ctx.fillStyle = '#ff3a5a'; ctx.beginPath(); ctx.moveTo(cx, cy - R + 18); ctx.lineTo(cx - 19, cy - R - 25); ctx.lineTo(cx + 19, cy - R - 25); ctx.fill();
+  ctx.fillStyle = '#ff3a5a'; ctx.beginPath(); ctx.moveTo(cx, cy - R + 18); ctx.lineTo(cx - 19, cy - R - 25); ctx.lineTo(cx + 19, cy - R - 25); ctx.fill(); }
   if (!pop) { uiTxt('두구두구…', W/2, 880, 28, '#e6dcff'); return; }
   const o = S.balls[b.at], k = Math.min(1, b.t/.2), e = 1 - (1 - k)**3; // 결과 카드
   ctx.save(); ctx.translate(360, 940); ctx.scale(.7 + .3*e, .7 + .3*e); ctx.globalAlpha = k;
@@ -1714,15 +1716,15 @@ function drawTut() {
   const m = S.mode;
   if (m === 'play' && S.tutRun && !tutSeen('fight')) { // 1단계: 첫 전투
     const st = S.tutStep || 0, tapM = ctrlMode() === 'tap';
-    if (st === 0) { if (Math.hypot(S.px - S.tut0.x, S.py - S.tut0.y) > 90) S.tutStep = 1; else tutHint(tapM ? '아래 스틱을 끌어 움직여 보세요' : '왼쪽 화면을 누르고 끌어 움직여 보세요', tapM ? TAPJOY.x : 150, TAPJOY.y, W/2, PMIN + 40); }
-    else if (st === 1) { if (S.tgt || S.aimHold || S.aimDir != null || S.t - (S.tutT || (S.tutT = S.t)) > 7) S.tutStep = 2; else tutHint(tapM ? '쏘고 싶은 쪽을 누르세요. 그 방향이 계속 유지돼요' : '오른쪽 화면을 누르고 끌어 조준하세요', W/2, PMIN - 120, W/2, PMIN + 60); }
+    if (st === 0) { if (Math.hypot(S.px - S.tut0.x, S.py - S.tut0.y) > 90) S.tutStep = 1; else tutHint(tapM ? '아래 스틱을 끌어 움직여 보세요' : '왼쪽 "이동" 스틱을 끌어 움직여 보세요', tapM ? TAPJOY.x : 150, TAPJOY.y - 50, W/2, 720); }
+    else if (st === 1) { if (S.tgt || S.aimHold || S.aimDir != null || S.t - (S.tutT || (S.tutT = S.t)) > 7) S.tutStep = 2; else tutHint(tapM ? '쏘고 싶은 쪽을 누르세요. 그 방향이 계속 유지돼요' : '오른쪽 "조준" 스틱을 끌면 그쪽으로 쏴요. 손을 떼면 자동 조준', tapM ? W/2 : W - 150, tapM ? PMIN - 120 : TAPJOY.y - 50, W/2, tapM ? PMIN - 60 : 720); }
     else if (st === 2) { if (S.caught) S.tutStep = 3; else { const r = S.shots.find(o => o.chamber && o.bounced && !o.gone && o.y > PMIN - 200); tutHint('공은 튕겨서 돌아와요. 몸으로 받아야 다시 쏠 수 있어요', r ? r.x : null, r ? r.y : null, W/2, TOP + 150); } }
     else if (st === 3) { const g = S.picks.find(p => p.kind === 'xp'); if (S.xp > 0 || S.lv > 1) { S.tutStep = 4; tutDone('fight'); } else if (g) tutHint('파란 보석을 주우면 경험치! 가득 차면 레벨업', g.x, g.y, W/2, TOP + 150); }
   }
   if (m === 'levelup' && !tutSeen('card')) tutHint('카드를 하나 골라 볼을 강화하거나 새 볼을 얻어요', null, null, W/2, 1210);
   if (m === 'levelup' && !tutSeen('fuse') && S.choices && S.choices.some(c => c.type === 'fuse' || c.type === 'evo')) tutHint('Lv5 볼 두 개를 합치면 기능이 합쳐져요. 짝이 맞으면 진화!', null, null, W/2, 1210);
   if (m === 'freeup' && !tutSeen('free')) tutHint(S.fu && S.fu.gear ? '장비 캡슐! 장비를 하나 골라요. 장비는 아래 칸을 하나 써요' : '무료 강화! 볼을 올리거나 아이템을 골라요', null, null, W/2, 1210);
-  if (m === 'ballcap' && !tutSeen('free')) tutHint('볼 캡슐! 룰렛이 멈춘 볼이 자동으로 강해져요', null, null, W/2, 1210);
+  if (m === 'ballcap' && !tutSeen('free')) tutHint(S.bc && S.bc.solo ? '볼 캡슐! 내 볼이 자동으로 강해져요' : '볼 캡슐! 룰렛이 멈춘 볼이 자동으로 강해져요', null, null, W/2, 1210);
   if (m === 'lobby' && !LOBBY.pop) { // 3단계: 로비 안내 (한 번에 하나)
     if (META.maxLevel >= 1 && !tutSeen('pb')) { const [x, y] = tabTarget('hub'); tutHint('첫 클리어 보상으로 핀볼을 얻었어요! 핀볼 기계로 가 봐요', x, y, W/2, 800); }
     else if (tutSeen('pb') && !tutSeen('equip')) { const [x, y] = tabTarget('balls'); tutHint('얻은 볼을 장착해요. 장착한 볼만 전투에 나와요', x, y, W/2, 800); }
@@ -2721,7 +2723,17 @@ function drawHub() { // 핀볼 페이지 = 대기(select) / 발사 중(machine)
   if (MS.msg) { uiPill(130, 900, 460, 64, '#d8302a'); uiTxt(MS.msg.s, W/2, 944, 28); }
 }
 // ---------- 침략 페이지: 세로 아레나 길 (시안 1+4). 위 = 잠긴 다음 아레나, 가운데 = 지금 아레나 + 트로피 막대, 아래 = 해금 볼 + 침략 버튼 ----------
-const AB = {go:{x:160, y:1060, w:400, h:100}};
+const AB = {go:{x:160, y:1040, w:400, h:124}};
+const AV = {y:150, h:870, sy:null, pop:null}; // 아레나 목록 보이는 칸(화면 y·높이), 스크롤 위치, 눌러서 연 아레나 상세
+const AV_CUR = 540, AV_ETC = 200, AV_GAP = 56;  // 카드 높이: 지금 아레나 / 나머지, 카드 사이(리본 자리)
+function arenaCards() { // 위 = 높은 아레나. 콘텐츠 좌표(y)로 카드 배치
+  const cur = league(), out = []; let y = 40;
+  for (let i = RAID.leagues.length - 1; i >= 0; i--) { const h = i === cur ? AV_CUR : AV_ETC; out.push({i, y, h, st:i === cur ? 'cur' : i > arenaMax() ? 'lock' : 'done'}); y += h + AV_GAP; }
+  return {cards:out, total:y};
+}
+const avMax = () => Math.max(0, arenaCards().total - AV.h);
+function avClamp(v) { return Math.max(0, Math.min(avMax(), v)); }
+function avScrollTo(i) { const c = arenaCards().cards.find(c => c.i === i); AV.sy = avClamp(c.y + c.h/2 - AV.h/2); }
 function arenaScene(i, x, y, w, h, lock) { // 아레나 그림: 하늘 + 먼 빌딩 + 바닥 + 아레나별 소품
   const a = RAID.leagues[i], q = (X, Y, Ww, Hh, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(X), Math.round(Y), Math.round(Ww), Math.round(Hh)); };
   const sky = ['#4a2a5a', '#2a3a5a', '#3a4a2a', '#1a3a3a', '#3a1a2a'][i], gr = ['#6a5a3a', '#5a5a6a', '#5a6a3a', '#3a5a5a', '#4a2a3a'][i];
@@ -2735,30 +2747,61 @@ function arenaScene(i, x, y, w, h, lock) { // 아레나 그림: 하늘 + 먼 빌
   if (lock) { q(x, y, w, h, 'rgba(10,6,20,.6)'); q(x + w/2 - 18, y + h/2 - 6, 36, 30, '#9aa0ac'); ctx.strokeStyle = '#9aa0ac'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x + w/2, y + h/2 - 8, 12, Math.PI, 0); ctx.stroke(); }
   ctx.strokeStyle = UI.ink; ctx.lineWidth = 6; ctx.strokeRect(x, y, w, h);
 }
-function arenaTap(hit) {
-  if (hit(AB.go)) { tutDone('raid'); META.newArena = null; if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); }
+function arenaTap(hit, x, y) {
+  if (AV.pop != null) { AV.pop = null; return; }                                       // 상세 창: 아무 데나 누르면 닫힘
+  if (hit(AB.go)) { tutDone('raid'); META.newArena = null; if (raidTickets() >= 1) openPrep(() => startMatch()); else noTicket(); return; }
+  if (y > AV.y && y < AV.y + AV.h) { const cy = y - AV.y + AV.sy, c = arenaCards().cards.find(c => cy > c.y - 30 && cy < c.y + c.h); if (c) AV.pop = c.i; }
+}
+function arenaCard(c, T) { // 카드 하나 (콘텐츠 좌표). cur = 크게(그림·이름·트로피 막대·해금 볼), done/lock = 작게
+  const A = RAID.leagues, a = A[c.i], rp = META.rp || 0, X = 40, Wd = 640, y = c.y, RC = {common:'#9aa0ac', uncommon:'#5ac84a', rare:'#3ab8ff', unique:'#ffb43a'};
+  if (c.st === 'cur') { ctx.globalAlpha = .45 + .2*Math.sin(T*3); ctx.fillStyle = '#7aff5a'; ctx.fillRect(X - 10, y - 10, Wd + 20, c.h + 20); ctx.globalAlpha = 1; }
+  pxBox(X, y, Wd, c.h, c.st === 'lock' ? '#6a6478' : '#e8d8b8', {shade:c.st === 'lock' ? '#4a4458' : '#c8b088', light:c.st === 'lock' ? '#a8a0b8' : '#fff4dc', sh:3});
+  if (c.st !== 'cur') { arenaScene(c.i, X + 16, y + 30, Wd - 32, 104, c.st === 'lock');
+    uiRibbon(360, y - 2, 200, '아레나 ' + (c.i + 1), c.st === 'done' ? 'green' : 'gray', 26);
+    uiLabel(a.an + (c.st === 'lock' ? ' · 트로피 ' + a.min + '에 열림' : ' · 해금 완료'), 360, y + 166, 22, c.st === 'lock' ? '#e6dcff' : '#6a5040', 'center', 900);
+    uiLabel('눌러서 볼 보기 ›', X + Wd - 20, y + 190, 16, c.st === 'lock' ? '#b8b0c8' : '#8a7050', 'right', 700);
+    if (c.st === 'done') { ctx.fillStyle = '#2f8a2a'; ctx.fillRect(X - 14, y + 40, 60, 54); uiTxt('✔', X + 16, y + 84, 40, '#fff'); }
+    return; }
+  const nx = A[c.i + 1]; arenaScene(c.i, X + 18, y + 44, Wd - 36, 230, false);
+  uiRibbon(360, y - 2, 220, '아레나 ' + (c.i + 1), 'gold', 30); uiRibbon(110, y - 2, 90, '현재', 'green', 22);
+  uiTxt(a.an, 360, y + 326, 40, '#e8901a');
+  { const k = nx ? (rp - a.min)/(nx.min - a.min) : 1; pxBox(90, y + 346, 540, 40, '#1a0e30', {shade:null, light:null}); ctx.fillStyle = '#5ac84a'; ctx.fillRect(96, y + 352, Math.round(528*Math.min(1, k)), 28);
+    uiTxt(nx ? rp + ' / ' + nx.min : 'MAX', 360, y + 376, 24, '#fff'); }
+  uiLabel('이 아레나에서 해금된 볼', 360, y + 420, 20, '#6a5040', 'center', 900);
+  a.balls.forEach((b, k) => { const bx = 62 + k*100, by = y + 432, rc = RC[BALL_RARITY[b]];
+    pxBox(bx, by, 88, 96, rc, {shade:dark(rc, .35), light:lite(rc, .3), sh:2}); ctx.fillStyle = '#2a1a4a'; ctx.fillRect(bx + 6, by + 6, 76, 58); uiBall(bx + 44, by + 35, 22, [b], T);
+    uiLabel(RARITY[BALL_RARITY[b]].name, bx + 44, by + 86, 17, '#fff', 'center', 900); });
+}
+function arenaPopup(i, T) { // 아레나 상세: 이름·조건·상태 + 해금 볼 6개(이름·희귀도)
+  const a = RAID.leagues[i], st = i > arenaMax() ? 'lock' : i === league() ? 'cur' : 'done', RC = {common:'#9aa0ac', uncommon:'#5ac84a', rare:'#3ab8ff', unique:'#ffb43a'};
+  ctx.fillStyle = 'rgba(10,2,30,.7)'; ctx.fillRect(0, 0, W, H);
+  const P = {x:50, y:300, w:620, h:620}; uiPopup(P.x, P.y, P.w, P.h); uiRibbon(360, P.y, 360, '아레나 ' + (i + 1), st === 'lock' ? 'gray' : st === 'cur' ? 'gold' : 'green', 32);
+  arenaScene(i, P.x + 30, P.y + 60, P.w - 60, 140, st === 'lock');
+  uiTxt(a.an, 360, P.y + 252, 38, '#e8901a');
+  uiLabel(st === 'lock' ? '트로피 ' + a.min + '에 열림 (지금 ' + (META.rp || 0) + ')' : st === 'cur' ? '지금 아레나' : '해금 완료', 360, P.y + 290, 22, st === 'lock' ? '#c84a3a' : '#6a5a8a', 'center', 900);
+  uiLabel(st === 'lock' ? '이 아레나에 오르면 해금되는 볼' : '이 아레나에서 해금된 볼', 360, P.y + 334, 20, UI.ink, 'center', 900);
+  a.balls.forEach((b, k) => { const bx = P.x + 34 + (k%3)*188, by = P.y + 352 + Math.floor(k/3)*126, rc = RC[BALL_RARITY[b]];
+    pxBox(bx, by, 176, 114, rc, {shade:dark(rc, .35), light:lite(rc, .3), sh:2}); ctx.fillStyle = '#2a1a4a'; ctx.fillRect(bx + 6, by + 6, 164, 70);
+    if (st === 'lock') ctx.globalAlpha = .55; uiBall(bx + 88, by + 41, 26, [b], T); ctx.globalAlpha = 1;
+    uiLabel(FN[b].name + ' · ' + RARITY[BALL_RARITY[b]].name, bx + 88, by + 102, 18, '#fff', 'center', 900); });
+  uiLabel('아무 곳이나 누르면 닫혀요', 360, P.y + P.h + 44, 20, '#e6dcff', 'center', 700);
 }
 function drawArena() {
-  const T = performance.now()/1000, rp = META.rp || 0, cur = league(), A = RAID.leagues, nx = A[cur + 1], RC = {common:'#9aa0ac', uncommon:'#5ac84a', rare:'#3ab8ff', unique:'#ffb43a'};
-  ctx.drawImage(MENU_BG, 0, 0); uiTopBar();
-  { const rt = raidTickets(); uiLabel('침략권 ' + rt + '/' + RAIDT.max + (rt >= RAIDT.max ? ' · 가득' : ' · 다음 ' + mmss(raidNextIn())), W - 24, 136, 22, '#e6dcff', 'right', 900);
-    uiLeague(40, 128, 16, cur); uiLabel('트로피 ' + rp, 62, 136, 22, '#ffd23a', 'left', 900); }
-  if (nx) { pxBox(50, 170, 620, 150, '#6a6478', {shade:'#4a4458', light:'#a8a0b8', sh:3}); arenaScene(cur + 1, 66, 186, 588, 118, true);   // 잠긴 다음 아레나
-    uiRibbon(360, 168, 200, '아레나 ' + (cur + 2), 'gray', 26); uiLabel(nx.an + ' · 트로피 ' + nx.min + '에 열림', 360, 296, 22, '#e6dcff', 'center', 900); }
-  else uiLabel('최고 아레나에 올랐어요!', 360, 250, 30, '#ffd23a', 'center', 900);
-  ctx.globalAlpha = .45 + .2*Math.sin(T*3); ctx.fillStyle = '#7aff5a'; ctx.fillRect(30, 356, 660, 432); ctx.globalAlpha = 1;            // 지금 아레나: 깜빡이는 초록 테
-  pxBox(40, 366, 640, 412, '#e8d8b8', {shade:'#c8b088', light:'#fff4dc', sh:3}); arenaScene(cur, 58, 414, 604, 270, false);
-  uiRibbon(360, 364, 220, '아레나 ' + (cur + 1), 'gold', 30); uiRibbon(110, 364, 90, '현재', 'green', 22);
-  uiTxt(A[cur].an, 360, 740, 40, '#e8901a');
-  { const k = nx ? (rp - A[cur].min)/(nx.min - A[cur].min) : 1; pxBox(90, 800, 560, 40, '#1a0e30', {shade:null, light:null}); ctx.fillStyle = '#5ac84a'; ctx.fillRect(96, 806, Math.round(548*Math.min(1, k)), 28);
-    uiTxt(nx ? rp + ' / ' + nx.min : 'MAX', 370, 830, 24, '#fff'); }
-  pxBox(40, 862, 640, 180, '#e8d8b8', {shade:'#c8b088', light:'#fff4dc', sh:3}); uiLabel('이 아레나에서 해금된 볼', 360, 896, 22, '#6a5040', 'center', 900);
-  A[cur].balls.forEach((b, i) => { const bx = 62 + i*100, by = 912, rc = RC[BALL_RARITY[b]];
-    pxBox(bx, by, 88, 116, rc, {shade:dark(rc, .35), light:lite(rc, .3), sh:2}); ctx.fillStyle = '#2a1a4a'; ctx.fillRect(bx + 6, by + 6, 76, 70); uiBall(bx + 44, by + 41, 24, [b], T);
-    uiLabel(RARITY[BALL_RARITY[b]].name, bx + 44, by + 104, 18, '#fff', 'center', 900); });
-  { const p = 1 + Math.sin(T*4)*.03, B = AB.go; ctx.save(); ctx.translate(B.x + B.w/2, B.y + B.h/2); ctx.scale(p, p); uiBtn({x:-B.w/2, y:-B.h/2, w:B.w, h:B.h}, '침략 시작', 'orange', 44, raidTickets() < 1); ctx.restore(); }
+  const T = performance.now()/1000, rp = META.rp || 0, cur = league();
+  if (AV.sy == null || AV.cur !== cur) { AV.cur = cur; avScrollTo(cur); }                  // 처음·아레나가 바뀌면 지금 아레나를 가운데로
+  ctx.drawImage(MENU_BG, 0, 0);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, AV.y, W, AV.h); ctx.clip(); ctx.translate(0, AV.y - AV.sy);
+  for (const c of arenaCards().cards) if (c.y + c.h > AV.sy - 40 && c.y - 40 < AV.sy + AV.h) arenaCard(c, T);
+  ctx.restore();
+  if (avMax() > 0) { const th = AV.h*AV.h/(AV.h + avMax()), ty = AV.y + (AV.h - th)*AV.sy/avMax(); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(W - 12, AV.y, 6, AV.h); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(W - 12, ty, 6, th); } // 스크롤 막대
+  uiTopBar(); uiLeague(40, 128, 16, cur); uiLabel('트로피 ' + rp, 62, 136, 22, '#ffd23a', 'left', 900);
+  { const p = 1 + Math.sin(T*4)*.03, B = AB.go, rt = raidTickets(); ctx.save(); ctx.translate(B.x + B.w/2, B.y + B.h/2); ctx.scale(p, p);  // 침략 버튼 + 버튼 안 침략권
+    uiBtn({x:-B.w/2, y:-B.h/2, w:B.w, h:B.h}, '', 'orange', 44, rt < 1); uiTxt('침략 시작', 0, -4, 44);
+    for (let k = 0; k < RAIDT.max; k++) { ctx.beginPath(); ctx.arc(-110 + k*30, 34, 10, 0, TAU); ctx.fillStyle = k < rt ? '#ffd23a' : 'rgba(40,10,40,.45)'; ctx.fill(); uiLine(UI.ink, 3); }
+    uiLabel(rt >= RAIDT.max ? '가득' : rt + '/' + RAIDT.max + ' · ' + mmss(raidNextIn()), 50, 42, 20, '#fff', 'left', 900); ctx.restore(); }
   tabBar('arena');
-  if (LOBBY.msg && performance.now() < LOBBY.msgUntil) { uiPill(110, 980, 500, 60, '#d8302a'); uiTxt(LOBBY.msg, W/2, 1020, 24); }
+  if (LOBBY.msg && performance.now() < LOBBY.msgUntil) { uiPill(110, 960, 500, 60, '#d8302a'); uiTxt(LOBBY.msg, W/2, 1000, 24); }
+  if (AV.pop != null) arenaPopup(AV.pop, T);
 }
 // ---------- 로비: 자동 사냥 + 자동 사냥 수익 + 레벨·침략 ----------
 const LOBBY = {pop:null, msgUntil:0, msg:'', flyT:0};
@@ -2905,8 +2948,9 @@ function togglePick(id) { // 이미 고른 건 해제, 가득 차면 가장 먼�
 const PREP_TILE = i => ({x:30 + (i%4)*167, y:580 + Math.floor(i/4)*164, w:157, h:150});
 const PREP_BACK = {x:30, y:1030, w:200, h:100}, PREP_GO = {x:250, y:1030, w:440, h:100};
 function prepTap(hit) {
-  const pool = prepPool(), k = pool.findIndex((id, i) => hit(PREP_TILE(i)));
-  if (k >= 0) togglePick(pool[k]);
+  const pool = prepPool(), k = pool.findIndex((id, i) => hit(PREP_TILE(i))), sk = [1, 2].find(i => META.pick[i - 1] && hit({x:30 + i*232, y:214, w:216, h:270})); // 위 선택 칸
+  if (sk) META.pick.splice(sk - 1, 1);
+  else if (k >= 0) togglePick(pool[k]);
   else if (hit(PREP_BACK)) { PREP.next = null; reset(); S.mode = 'lobby'; }
   else if (hit(PREP_GO) && META.pick.length >= prepNeed()) { tutDone('prep'); saveMeta(); const n = PREP.next; PREP.next = null; if (n) n(); }
 }
@@ -2930,7 +2974,7 @@ function drawPrep() {
   });
   const pool = prepPool();
   uiPath(16, 512, W - 32, 488, 28); ctx.fillStyle = 'rgba(20,8,50,.5)'; ctx.fill(); uiLine('rgba(255,255,255,.18)', 3);
-  uiTxt('내 볼 (장착 ' + META.deck.length + '/' + DECK_MAX + ')', 36, 554, 28, '#fff', 'left'); uiLabel('눌러서 2개 고르기', 684, 552, 19, '#e6dcff', 'right', 700);
+  uiTxt('내 볼 (장착 ' + META.deck.length + '/' + DECK_MAX + ')', 36, 554, 28, '#fff', 'left'); uiLabel('눌러서 고르기 · 위 칸 누르면 빼기', 684, 552, 19, '#e6dcff', 'right', 700);
   pool.forEach((id, i) => {
     const r0 = PREP_TILE(i), n = META.pick.indexOf(id), on = n >= 0, rar = BALL_RARITY[id], r = {...r0, y:r0.y - (on ? 6 : 0)};
     uiCard(r.x, r.y, r.w, r.h, on ? '#fff4c0' : UI.cream, RCOL[rar], 26, true, on ? 8 : 5);
@@ -3163,7 +3207,7 @@ function tap(x, y) {
   if (tabTap(hit)) return true;
   if (S.mode === 'select' || S.mode === 'machine') { machineTap(x, y, hit); return true; }
   if (S.mode === 'lobby') { lobbyTap(hit); return true; }
-  if (S.mode === 'arena') { arenaTap(hit); return true; }
+  if (S.mode === 'arena') { arenaTap(hit, x, y); return true; }
   if (S.mode === 'prep') { prepTap(hit); return true; }
   if (S.mode === 'balls') { const b = ballButtons().find(hit); if (b && !b.off) b.act(); return true; }
   if (S.mode === 'chars') { const u = CHARS.findIndex((c, i) => hit(charUpBtn(i))); if (u >= 0 && META.chars[CHARS[u].id].owned) { charUpgrade(CHARS[u].id); return true; } const b = charButtons().find(hit); if (b) b.act(); return true; }
@@ -3177,9 +3221,13 @@ function tap(x, y) {
   return false;
 }
 // 마우스: 자동 조준이면 누르고 있는 동안 커서 쪽으로 이동 / 수동 조준이면 커서 방향으로 조준 (이동은 키보드)
-cv.addEventListener('mousedown', e => { const [x, y] = pt(e); if (!tap(x, y) && S.autoAim) S.goal = {x, y}; });
-cv.addEventListener('mousemove', e => { [S.mx, S.my] = pt(e); S.aimDir = null; if (S.goal) S.goal = {x:S.mx, y:S.my}; });
-addEventListener('mouseup', () => { S.goal = null; MS.hold = false; });
+const avDrag = (x, y) => S.mode === 'arena' && AV.pop == null && !TITLE.on && y > AV.y && y < AV.y + AV.h ? {x, y, sy0:AV.sy, moved:false} : null; // 아레나 목록 끌기 시작
+function avMove(d, y) { if (Math.abs(y - d.y) > 12) d.moved = true; if (d.moved) AV.sy = avClamp(d.sy0 - (y - d.y)); }
+let MDRAG = null;
+cv.addEventListener('mousedown', e => { const [x, y] = pt(e); if ((MDRAG = avDrag(x, y))) return; if (!tap(x, y) && S.autoAim) S.goal = {x, y}; });
+cv.addEventListener('mousemove', e => { [S.mx, S.my] = pt(e); if (MDRAG) { avMove(MDRAG, S.my); return; } S.aimDir = null; if (S.goal) S.goal = {x:S.mx, y:S.my}; });
+addEventListener('mouseup', () => { if (MDRAG && !MDRAG.moved) tap(MDRAG.x, MDRAG.y); MDRAG = null; S.goal = null; MS.hold = false; });
+cv.addEventListener('wheel', e => { if (S.mode === 'arena' && AV.pop == null) { e.preventDefault(); AV.sy = avClamp(AV.sy + e.deltaY); } }, {passive:false});
 // 터치 조작 (설정 > 조작):
 //  stick = 좌우 반쪽 조이스틱: 왼쪽 반 누른 자리에 이동 스틱, 오른쪽 반 누른 자리에 조준 스틱
 //  tap   = 탭 조준: 아래 가운데 고정 이동 스틱 + 그 밖을 누르면 그쪽 각도로 조준 (각도는 이동해도 유지, 끌면 계속 바뀜)
@@ -3191,6 +3239,7 @@ cv.addEventListener('touchstart', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const [x, y] = pt(t);
+    const dg = avDrag(x, y); if (dg) { touches[t.identifier] = {kind:'drag', ...dg}; continue; }
     if (tap(x, y)) continue;
     if (S.mode !== 'play') continue;
     const kind = ctrlMode() === 'tap' ? (Math.hypot(x - TAPJOY.x, y - TAPJOY.y) < TAPJOY.r*1.6 ? 'move' : 'aim') : x < W/2 ? 'move' : 'aim';
@@ -3205,6 +3254,7 @@ cv.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const o = touches[t.identifier]; if (!o) continue;
+    if (o.kind === 'drag') { avMove(o, pt(t)[1]); continue; }
     [o.cx, o.cy] = pt(t);
     const s = stick(o, o.cx, o.cy, 70);
     if (o.kind === 'move') S.joy = {x:s.dx*s.k, y:s.dy*s.k};
@@ -3217,6 +3267,7 @@ const touchEnd = e => {
   for (const t of e.changedTouches) {
     const o = touches[t.identifier]; if (!o) continue;
     delete touches[t.identifier];
+    if (o.kind === 'drag') { if (!o.moved) tap(o.x, o.y); continue; }
     if (o.kind === 'move') S.joy = null; else S.aimHold = false; // 수동 조준(자동 끔)이면 손을 떼도 마지막 방향 유지
   }
 };
