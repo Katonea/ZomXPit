@@ -2687,37 +2687,47 @@ function drawSettings() {
 }
 // ---------- 타이틀 (처음 한 번) ----------
 const TITLE = {on:true};
-// 타이틀: 하얀 바탕 + 위에 작은 오락실 화면(네온 ZOM X PIT 로고·점수). 공 하나가 벽과 좀비를 튕겨 다니고, 맞은 좀비는 번쩍 → 도트 조각으로 터진 뒤 다른 자리에 다시 나타남
+// 타이틀 (title_mockups 시안 1 + 사방 벽): 흙바닥을 붉은 벽돌 벽이 상하좌우로 두르고, 위쪽 벽에 네온 로고(ZOM X PIT + HI 점수).
+// 공 하나가 벽과 좀비를 튕겨 다니고, 맞은 좀비는 번쩍 → 도트 조각으로 터지며 바닥에 핏자국을 남긴 뒤 다른 자리에 다시 나타남
+const TW = {l:44, r:676, t:300, b:1120}; // 벽 안쪽 경계
+function brickWall(x, y, w, h, edge) { // 벽돌 벽 사각형 + 안쪽 가장자리 잔해 띠 (edge = 'l'|'r'|'t'|'b')
+  ctx.fillStyle = '#24160f'; ctx.fillRect(x, y, w, h);
+  for (let yy = y, row = 0; yy < y + h; yy += 24, row++) for (let xx = x - (row%2)*16; xx < x + w; xx += 32) {
+    const a = Math.max(x, xx + 2), b = Math.min(x + w, xx + 30), q = Math.abs(Math.sin(xx*12.9898 + yy*78.233)*43758.5453 % 1); if (b <= a || q < .12) continue;
+    ctx.fillStyle = q < .3 ? '#40201a' : q < .6 ? '#552a20' : '#5e3024'; ctx.fillRect(a, yy + 2, b - a, Math.min(20, y + h - yy - 2)); ctx.fillStyle = 'rgba(255,200,170,.07)'; ctx.fillRect(a, yy + 2, b - a, 3); }
+  const v = edge === 'l' || edge === 'r', ex = edge === 'l' ? x + w - 8 : x, ey = edge === 't' ? y + h - 8 : y;
+  ctx.fillStyle = '#5a4636'; if (v) ctx.fillRect(ex, y, 8, h); else ctx.fillRect(x, ey, w, 8);
+  for (let k = 0; k < (v ? h : w); k += 14) { ctx.fillStyle = (k/14)%3 ? '#8a6a4a' : '#7a3a2c'; if (v) ctx.fillRect(ex + ((k/14)%2)*3, y + k, 5, 6); else ctx.fillRect(x + k, ey + ((k/14)%2)*3, 6, 5); }
+}
 function drawTitle() {
-  const T = performance.now()/1000, M = TITLE.mz || (TITLE.mz = {t:T, b:{x:360, y:900, vx:330, vy:-420, trail:[]}, z:[], bits:[], kills:0}), dt = Math.min(.05, Math.max(0, T - M.t)); M.t = T;
+  const T = performance.now()/1000, M = TITLE.mz || (TITLE.mz = {t:T, b:{x:360, y:900, vx:330, vy:-420, trail:[]}, z:[], bits:[], blood:[], kills:0}), dt = Math.min(.05, Math.max(0, T - M.t)); M.t = T;
   const D = (spr, x, y, s) => { ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - spr.width*s/2), Math.round(y - spr.height*s/2), spr.width*s, spr.height*s); };
   const glow = (t, x, y, size, c, g) => { ctx.save(); ctx.shadowColor = g || c; ctx.shadowBlur = 30; uiTxt(t, x, y, size, c); ctx.restore(); uiTxt(t, x, y, size, c); };
-  while (M.z.length < 7) { let p, tries = 0; do { p = {x:120 + Math.random()*480, y:360 + Math.random()*560}; tries++; } while (tries < 20 && (M.z.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 110) || Math.hypot(M.b.x - p.x, M.b.y - p.y) < 140));
-    M.z.push({...p, type:['knight', 'runner', 'helmet', 'priest', 'mage', 'bomber', 'convict'][Math.floor(Math.random()*7)], ph:Math.random()*6, born:T}); }
-  const B = M.b; B.x += B.vx*dt; B.y += B.vy*dt;
-  if (B.x < 60 || B.x > 660) { B.vx *= -1; B.x = Math.max(60, Math.min(660, B.x)); } if (B.y < 320 || B.y > 1080) { B.vy *= -1; B.y = Math.max(320, Math.min(1080, B.y)); }
+  while (M.z.length < 7) { let p, tries = 0; do { p = {x:TW.l + 70 + Math.random()*(TW.r - TW.l - 140), y:TW.t + 80 + Math.random()*(TW.b - TW.t - 220)}; tries++; } while (tries < 20 && (M.z.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 110) || Math.hypot(M.b.x - p.x, M.b.y - p.y) < 140));
+    M.z.push({...p, type:['knight', 'runner', 'helmet', 'priest', 'mage', 'bomber', 'convict', 'shield'][Math.floor(Math.random()*8)], ph:Math.random()*6, born:T}); }
+  const B = M.b, R = 22; B.x += B.vx*dt; B.y += B.vy*dt;
+  if (B.x < TW.l + R || B.x > TW.r - R) { B.vx *= -1; B.x = Math.max(TW.l + R, Math.min(TW.r - R, B.x)); } if (B.y < TW.t + R || B.y > TW.b - R) { B.vy *= -1; B.y = Math.max(TW.t + R, Math.min(TW.b - R, B.y)); }
   for (const z of M.z) { if (z.dead || T - z.born < .4) continue; const dx = B.x - z.x, dy = B.y - z.y, d = Math.hypot(dx, dy);
-    if (d < 40) { z.dead = T; M.kills++; const n = d || 1, dt2 = B.vx*dx/n + B.vy*dy/n; B.vx -= 2*dt2*dx/n; B.vy -= 2*dt2*dy/n; // 공은 좀비에 맞고 튕김
-      for (let k = 0; k < 26; k++) { const an = Math.random()*TAU, v = 120 + Math.random()*320; M.bits.push({x:z.x, y:z.y - 10, vx:Math.cos(an)*v, vy:Math.sin(an)*v - 160, t:.9 + Math.random()*.5, c:['#8ab84a', '#6a9838', '#c8302a', '#8a1a1a', '#e8e0c8'][k%5], s:8 + (k%3)*4}); } } }
+    if (d < 40) { z.dead = T; M.kills++; sfx('kill', .04); const n = d || 1, k2 = B.vx*dx/n + B.vy*dy/n; B.vx -= 2*k2*dx/n; B.vy -= 2*k2*dy/n; // 공은 좀비에 맞고 튕김
+      for (let k = 0; k < 26; k++) { const an = Math.random()*TAU, v = 120 + Math.random()*320; M.bits.push({x:z.x, y:z.y - 10, vx:Math.cos(an)*v, vy:Math.sin(an)*v - 160, t:.9 + Math.random()*.5, c:['#8ab84a', '#6a9838', '#c8302a', '#8a1a1a', '#e8e0c8'][k%5], s:8 + (k%3)*4, fy:z.y + 20 + Math.random()*40}); }
+      const dots = []; for (let k = 0; k < 18; k++) { const an = Math.random()*TAU, r = Math.random()*54; dots.push([Math.round(Math.cos(an)*r/4)*4, Math.round(Math.sin(an)*r*.6/4)*4, 4 + Math.floor(Math.random()*3)*4]); }
+      M.blood.push({x:z.x, y:z.y + 24, dots, t:T}); if (M.blood.length > 60) M.blood.shift(); } }
   M.z = M.z.filter(z => !z.dead || T - z.dead < .12);
-  for (const p of M.bits) { p.t -= dt; p.vy += 900*dt; p.x += p.vx*dt; p.y += p.vy*dt; } M.bits = M.bits.filter(p => p.t > 0);
-  B.trail.unshift({x:B.x, y:B.y}); B.trail.length = Math.min(B.trail.length, 34);
-  ctx.fillStyle = '#f4f0e8'; ctx.fillRect(0, 0, W, H);
-  B.trail.forEach((p, k) => { ctx.globalAlpha = (1 - k/34)*.7; ctx.fillStyle = UI.ink; ctx.fillRect(Math.round(p.x/8)*8 - 4, Math.round(p.y/8)*8 - 4, 8, 8); }); ctx.globalAlpha = 1;
-  for (const z of M.z) { ctx.globalAlpha = Math.min(1, (T - z.born)/.4); ctx.fillStyle = 'rgba(42,20,80,.12)'; ctx.fillRect(z.x - 22, z.y + 30, 44, 8);
+  for (const p of M.bits) { p.t -= dt; p.vy += 900*dt; p.x += p.vx*dt; p.y += p.vy*dt; if (p.y > p.fy && p.c !== '#e8e0c8' && !p.landed) { p.landed = true; M.blood.push({x:p.x, y:p.fy, dots:[[0, 0, 8]], t:T}); } } // 떨어진 살점도 핏자국으로
+  M.bits = M.bits.filter(p => p.t > 0 && !p.landed);
+  B.trail.unshift({x:B.x, y:B.y}); B.trail.length = Math.min(B.trail.length, 30);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.scale(4, 4); ctx.fillStyle = ctx.createPattern(BG, 'repeat'); ctx.fillRect(0, 0, W/4, H/4); ctx.restore(); // 흙바닥
+  for (const s of M.blood) { ctx.globalAlpha = Math.max(.3, 1 - (T - s.t)/40)*.85; for (const [ox, oy, sz] of s.dots) { ctx.fillStyle = sz > 8 ? '#6a0a10' : '#8a1a1a'; ctx.fillRect(Math.round((s.x + ox)/4)*4, Math.round((s.y + oy)/4)*4, sz, sz); } } ctx.globalAlpha = 1; // 바닥 핏자국 (천천히 옅어짐)
+  B.trail.forEach((p, k) => { ctx.globalAlpha = (1 - k/30)*.6; ctx.fillStyle = 'rgba(255,230,180,.8)'; ctx.fillRect(Math.round(p.x/8)*8 - 4, Math.round(p.y/8)*8 - 4, 8, 8); }); ctx.globalAlpha = 1;
+  for (const z of M.z) { ctx.globalAlpha = Math.min(1, (T - z.born)/.4); ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(z.x - 22, z.y + 30, 44, 8);
     if (z.dead) D(shade(SPR[z.type], 'flash'), z.x, z.y, 3.4); else D(SPR[z.type + (Math.floor(T*3 + z.ph)%2 ? '1' : '')], z.x, z.y + Math.sin(T*4 + z.ph)*2, 3); ctx.globalAlpha = 1; }
   for (const p of M.bits) { ctx.globalAlpha = Math.min(1, p.t*2); ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x/4)*4, Math.round(p.y/4)*4, p.s, p.s); } ctx.globalAlpha = 1;
-  uiBall(B.x, B.y, 22, ['fire']);
-  pxBox(150, 50, 420, 220, '#05040a', {light:null, shade:null, drop:'rgba(42,20,80,.25)', u:6});                         // 작은 오락실 화면 (로고)
-  ctx.save(); ctx.beginPath(); ctx.rect(162, 62, 396, 196); ctx.clip();
-  ctx.strokeStyle = 'rgba(80,255,200,.08)'; ctx.lineWidth = 2; for (let x = 162; x < 560; x += 24) { ctx.beginPath(); ctx.moveTo(x, 62); ctx.lineTo(x, 258); ctx.stroke(); }
-  glow('ZOM', 268, 160, 68, '#ff3ad8'); glow('X', 360, 160, 60, '#3affd8'); glow('PIT', 452, 160, 68, '#ffe14a', '#ff8a3a');
-  uiLabel('HI ' + String(M.kills*100).padStart(6, '0'), 360, 224, 22, '#3affd8', 'center', 900);
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let y = 62; y < 258; y += 4) ctx.fillRect(162, y, 396, 2);
-  const vg = ctx.createRadialGradient(360, 160, 80, 360, 160, 260); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.7)'); ctx.fillStyle = vg; ctx.fillRect(162, 62, 396, 196);
-  ctx.restore();
-  ctx.globalAlpha = .55 + .45*Math.sin(T*4); uiLabel('화면을 터치해서 시작', W/2, 1160, 30, '#8a7aa8', 'center', 900); ctx.globalAlpha = 1;
-  uiLabel('가상 봇·합성 데이터 사용', W/2, 1230, 18, '#b8a8c8', 'center', 700);
+  uiBall(B.x, B.y, R, ['fire']);
+  brickWall(0, 0, W, TW.t, 't'); brickWall(0, TW.b, W, H - TW.b, 'b'); brickWall(0, TW.t, TW.l, TW.b - TW.t, 'l'); brickWall(TW.r, TW.t, W - TW.r, TW.b - TW.t, 'r'); // 사방 벽
+  glow('ZOM', 230, 180, 110, '#ff3ad8'); glow('X', 360, 180, 96, '#3affd8'); glow('PIT', 500, 180, 110, '#ffe14a', '#ff8a3a');
+  uiTxt('HI ' + String(M.kills*100).padStart(6, '0'), 360, 248, 26, '#3affd8');
+  ctx.globalAlpha = .55 + .45*Math.sin(T*4); uiTxt('화면을 터치해서 시작', W/2, 1196, 34, '#fff'); ctx.globalAlpha = 1;
+  uiLabel('가상 봇·합성 데이터 사용', W/2, 1252, 16, '#c8a898', 'center', 700);
 }
 // ---------- 입력 ----------
 const K = {};
