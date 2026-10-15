@@ -952,7 +952,8 @@ function ballCapsule() { // 볼 캡슐: 게임이 멈추고 룰렛이 내 볼 �
 const BC_SPIN = .85, BC_POP = .9; // 룰렛 도는 시간 / 결과 카드 보여 주는 시간
 function bcRoll() { const c = S.balls, cand = freeCand(), tg = cand[Math.floor(rand()*cand.length)], ti = c.indexOf(tg), sl = TAU/c.length; // 원판: 두 바퀴 이상 돌다 목표 칸이 위 화살표에 멈춤
   const a0 = S.bc.a1 ?? 0, base = -Math.PI/2 - (ti + .5)*sl, a1 = base + TAU*Math.ceil((a0 + TAU*2 - base)/TAU);
-  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1}); }
+  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1});
+  if (cand.length === 1) Object.assign(S.bc, {a0:a1, t:BC_SPIN, last:0}); } // 올릴 볼이 하나뿐이면 룰렛 없이 바로 강화 연출
 const bcAng = () => { const b = S.bc, k = Math.min(1, b.t/BC_SPIN); return b.ph === 'spin' ? b.a1 - (b.a1 - b.a0)*(1 - k)**3 : b.a1; };
 function bcIdx() { const n = S.balls.length, sl = TAU/n; return Math.floor((((-Math.PI/2 - bcAng())%TAU + TAU)%TAU)/sl)%n; } // 화살표 아래 칸
 function ballCapStep(dt) { const b = S.bc; b.t += dt;
