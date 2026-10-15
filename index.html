@@ -192,8 +192,8 @@ const FORM_GAP = {x:44, y:62}; // 몬스터 지름(40)에 맞춘 빽빽한 간�
 // 봇(game.bot) 클리어율 목표 ≈ 60~90%, L10·L20(마지막 벽)만 약 35%. 보스전 L1~4 약 20~30초, L5~10 약 55~65초
 const LEVELS = [
   {id:1,  name:'폐허 입구', mid:'midboss',   hpMul:.80, bossMul:0.35, dmgMul:0.6, waves:4, midAfter:2, boss:'butcher',  mix:{knight:1}, forms:['row', 'block']},
-  {id:2,  name:'기는 자의 골목', mid:'mbdash', hpMul:1.08, bossMul:0.52, dmgMul:0.75, waves:5, midAfter:2, boss:'captain',  mix:{knight:3, boar:1}, forms:['row', 'wedge']},
-  {id:3,  name:'저격 옥상', mid:'mbsnipe', hpMul:1.21, bossMul:0.33, dmgMul:0.85, waves:5, midAfter:2, boss:'digger',  mix:{knight:3, boar:1, archer:1}, forms:['row', 'wedge', 'block']},
+  {id:2,  name:'기는 자의 골목', mid:'mbdash', hpMul:1.08, bossMul:0.52, dmgMul:0.75, waves:5, midAfter:2, boss:'captain',  mix:{knight:3, boar:1, shield:1}, forms:['row', 'wedge']},
+  {id:3,  name:'저격 옥상', mid:'mbsnipe', hpMul:1.21, bossMul:0.33, dmgMul:0.85, waves:5, midAfter:2, boss:'digger',  mix:{knight:3, boar:1, archer:1, shield:1}, forms:['row', 'wedge', 'block']},
   {id:4,  name:'바리케이드', mid:'mbflame', hpMul:1.58, bossMul:0.33, dmgMul:0.9, waves:5, midAfter:2, boss:'paladin',  mix:{knight:2, shield:2, archer:1, boar:1}, forms:['wall', 'block']},
   {id:5,  name:'폐병원', mid:'mbtoxic', hpMul:1.84, bossMul:1.60, dmgMul:1.25, waves:6, midAfter:3, boss:'archmage',  mix:{knight:3, archer:1, shield:1, priest:1, boar:1}},
   {id:6,  name:'폭탄 공장', mid:'midboss', hpMul:2.01, bossMul:4.85, dmgMul:1.35, waves:6, midAfter:3, boss:'butcher',  mix:{knight:3, bomber:2, boar:1, archer:1}, forms:['wedge', 'row']},
@@ -489,10 +489,22 @@ const ZART = { // 적 종류 → 그림 함수 (f = 걸음 프레임 → 캔버�
   mage:zbody({shirt:'#b8b4a8', shirtD:'#8a867a', pants:'#8a867a', hat:(D, f) => { flames(D, f); D.rect(.3, .22, .4, .1, '#5a8ab8'); D.rect(.42, .34, .16, .08, '#3a3a44'); }}), // 화염방사: 머리에서 활활 + 방독면
   spitter:zbody({shirt:'#7a9a5a', shirtD:'#5a7a3a', pants:'#4a5a3a', hat:({rect, circ, dot}, f) => { const p = f ? .01 : 0; circ(.5, -.04, .13 + p, '#6ad84a'); circ(.34, .03, .09, '#8ae04a'); circ(.66, .01, .1 - p, '#8ae04a'); dot(.48, -.08, '#d8ff9a'); dot(.66, -.02, '#d8ff9a');
     rect(.44, .38, .12, .07 + (f ? .04 : 0), '#6ad84a'); }}), // 독 뿜는 좀비: 머리 위 독 거품 + 흘러내리는 침
-  mbdash:zpolice(({rect, circ}) => { circ(.5, .24, .25, '#c8302a', true); rect(.24, .2, .52, .05, '#ffd23a'); rect(.14, .04, .1, .16, '#f4f0e0'); rect(.76, .04, .1, .16, '#f4f0e0'); }, 32), // 돌진 대장: 빨간 헬멧 + 뿔
-  mbsnipe:zpolice(({rect, dot}) => { rect(.28, .1, .44, .1, '#3a5a2a'); rect(.24, .16, .52, .05, '#2a4a1a'); rect(.56, .26, .16, .1, '#2a2a34'); dot(.64, .3, '#ff3a3a', 2); }, 32), // 저격 대장: 베레모 + 빨간 조준경
-  mbflame:zpolice((D, f) => { flames(D, f); D.rect(.3, .22, .4, .1, '#5a8ab8'); D.rect(.42, .34, .16, .08, '#3a3a44'); }, 32), // 화염 대장: 머리 불 + 방독면
-  mbtoxic:zpolice(({circ, dot}, f) => { const p = f ? .01 : 0; circ(.5, .02, .14 + p, '#6ad84a'); circ(.32, .08, .1, '#8ae04a'); circ(.68, .06, .1 - p, '#8ae04a'); dot(.48, -.04, '#d8ff9a', 2); }, 32), // 독병 대장: 머리 위 독 거품
+  mbdash:zbody({wide:.06, shirt:'#c8302a', shirtD:'#8a1a1a', pants:'#f4f4f4', // 돌진 대장: 넓은 어깨 보호대 + 등번호 + 뿔 달린 미식축구 헬멧
+    body:({rect}) => { rect(.24, .48, .52, .07, '#f4f4f4'); rect(.42, .58, .16, .04, '#f4f4f4'); rect(.48, .58, .04, .14, '#f4f4f4'); },
+    hat:({rect, circ}) => { circ(.5, .26, .27, '#c8302a', true); rect(.26, .3, .48, .04, '#ffd23a'); rect(.36, .38, .28, .03, '#d8d8e0'); rect(.36, .43, .28, .03, '#d8d8e0'); rect(.14, .02, .08, .18, '#f4f0e0'); rect(.78, .02, .08, .18, '#f4f0e0'); }}, 32),
+  mbsnipe:zbody({shirt:'#5a6a3a', shirtD:'#3a4a22', pants:'#4a5a2a', // 저격 대장: 위장복 + 몸을 가로지르는 긴 저격총 + 베레모·빨간 조준경
+    body:({dot}) => { dot(.38, .58, '#3a4a22', 2); dot(.6, .7, '#7a8a4a', 2); dot(.46, .72, '#3a4a22'); },
+    front:({rect, dot}, f) => { const y = f ? .01 : 0; for (let i = 0; i < 10; i++) rect(.12 + i*.075, .7 - i*.035 + y, .08, .05, i < 3 ? '#6a4a2a' : '#2a2a34'); rect(.44, .5 + y, .14, .06, '#2a2a34'); dot(.58, .52 + y, '#ff3a3a'); },
+    hat:({rect, dot}) => { rect(.28, .08, .46, .1, '#3a5a2a'); rect(.24, .15, .52, .05, '#2a4a1a'); dot(.66, .1, '#ffd23a'); rect(.54, .24, .16, .1, '#2a2a34'); dot(.62, .28, '#ff3a3a', 2); }}, 32),
+  mbflame:zbody({shirt:'#e8731a', shirtD:'#b8501a', pants:'#c8601a', // 화염 대장: 등 뒤 연료통 둘 + 방염복 띠 + 손에 든 화염 노즐 + 방독면·머리 불
+    back:({rect}) => { rect(.18, .4, .14, .36, '#8a2a1a'); rect(.68, .4, .14, .36, '#8a2a1a'); rect(.18, .4, .14, .05, '#c8c8d0'); rect(.68, .4, .14, .05, '#c8c8d0'); },
+    body:({rect}) => { rect(.31, .6, .38, .05, '#ffe14a'); },
+    front:({rect, dot}, f) => { const y = f ? .01 : 0; rect(.62, .62 + y, .22, .06, '#4a4a56'); rect(.82, .6 + y, .06, .1, '#2a2a34'); dot(.9, .64 + y, f ? '#ff8a2a' : '#ffe14a', 2); },
+    hat:(D, f) => { flames(D, f); D.rect(.3, .22, .4, .1, '#5a8ab8'); D.rect(.42, .34, .16, .08, '#3a3a44'); }}, 32),
+  mbtoxic:zbody({shirt:'#e8e8e0', shirtD:'#b8b8a8', pants:'#4a5a3a', // 독병 대장: 초록 얼룩 실험 가운 + 양손 독병 + 보안경·독 거품
+    body:({dot}) => { dot(.38, .62, '#6ad84a', 2); dot(.56, .72, '#6ad84a'); dot(.62, .56, '#4ab83a'); },
+    front:({rect, dot}, f) => { const y = f ? .02 : 0; for (const x of [.12, .76]) { rect(x + .03, .52 - y, .06, .05, '#c8c8d0'); rect(x, .57 - y, .12, .14, '#6ad84a'); dot(x + .03, .6 - y, '#d8ff9a'); } },
+    hat:({rect, circ, dot}, f) => { const p = f ? .01 : 0; circ(.5, .02, .13 + p, '#6ad84a'); circ(.32, .08, .09, '#8ae04a'); circ(.68, .06, .09 - p, '#8ae04a'); dot(.48, -.04, '#d8ff9a', 2); rect(.3, .22, .4, .07, '#2a2a34'); dot(.38, .25, '#9ae8ff', 2); dot(.6, .25, '#9ae8ff', 2); }}, 32),
   midboss:zpolice(({rect, circ, dot}) => { circ(.5, .24, .25, ZNV, true); rect(.24, .2, .52, .05, ZBD); rect(.3, .27, .4, .05, '#9ac8ff'); dot(.48, .02, ZBD, 2); }, 32), // 진압 대장: 금줄 헬멧
   captain:ztank32({front:({rect, dot}, f) => { const y = f ? .01 : 0; rect(.03, .32 + y, .48, .56, ZSB); rect(.06, .35 + y, .08, .5, ZSBL); rect(.03, .58 + y, .48, .03, ZNV); dot(.26, .66 + y, ZBD, 2); }}), // 탱크: 왼쪽 큰 방패 (판정 shieldSide와 같음)
   butcher:ztank32({front:({rect, dot}, f) => { rect(.3, .44, .4, .4, '#f0e8e0'); rect(.3, .44, .4, .05, '#c8c0b8'); dot(.4, .56, ZBL, 2); dot(.56, .66, ZBL, 2); dot(.46, .74, ZBL); // 피 묻은 앞치마 + 오른손 큰 식칼
