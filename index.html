@@ -291,7 +291,7 @@ function loadMeta() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; Object.assign(m, s, {chars:Object.assign(m.chars, s.chars || {})}); } catch (e) { /* 손상·차단: 새로 시작 */ }
   if (m.gold) m.pinball = (m.pinball || 0) + Math.floor(m.gold/100); delete m.gold; // 골드 폐지: 옛 저장의 골드는 100골드 = 핀볼 1개로 환산
   for (const k of ['equip', 'equipped', 'uid', 'pbLv', 'pbXp']) delete m[k]; // 장비·핀볼 레벨 제거 이전 저장
-  m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set);
+  m.set = Object.assign({sfx:.8, music:.6, vib:1, ctrl:'stick'}, m.set);
   m.deck = m.deck.filter(id => m.bag[id]).slice(0, DECK_MAX);
   return m;
 }
@@ -707,7 +707,7 @@ function reset(levelId = 1, tut = false) {
     wave:0, waveT:waveOf(L0, 0), wavesDone:false, spawnT:0, eliteT:RULE.eliteEvery, bossT:RULE.bossDelay,
     fireT:0, eid:0, choices:null, lvQueue:0, mid:null, midAt:null, boss:null, t4At:null, result:null,
     slowT:0, dotT:0, curseT:0, ch:c, chBase:{...c}, shield:0, charmT:0, delayed:[],
-    fw:L0.raid ? FIELD.openW : FIELD.startW, fwT:L0.raid ? FIELD.openW : FIELD.startW, fl:0, fr:W, autoAim:S ? S.autoAim : true, aimDir:null, aimHold:false, mx:W/2, my:0, goal:null, joy:null}; // 조준 모드는 판이 바뀌어도 유지
+    fw:L0.raid ? FIELD.openW : FIELD.startW, fwT:L0.raid ? FIELD.openW : FIELD.startW, fl:0, fr:W, autoAim:S ? S.autoAim : true, aimDir:null, aimHold:false, mx:W/2, my:0, goal:null, joy:null, tgt:null}; // 조준 모드는 판이 바뀌어도 유지
   walls(); syncChambers(); MS = newMS();
 }
 function walls() { S.fl = (W - S.fw)/2; S.fr = W - S.fl; }
@@ -1095,7 +1095,9 @@ function shotProps(b) {
     pierce:b.evo === 'lance' ? 99 : b.fns.includes('pierce') ? Math.round(fv('pierce', E).n) : 0, ric:b.fns.includes('ricochet') ? Math.round(fv('ricochet', E).n) : 0, spdMul:1 + sw.spd};
 }
 // 조준: 조준 스틱을 누르는 중이면 그 방향 > 수동 모드면 마지막 스틱 방향 또는 마우스 커서 > 자동이면 가장 가까운 적
+const ctrlMode = () => (META.set && META.set.ctrl) || 'stick';
 function aimAngle() {
+  if (ctrlMode() === 'tap' && S.tgt) { const e = S.tgt.e; if (e && !e.dead) { S.tgt.x = e.x; S.tgt.y = e.y; } else if (e) S.tgt.e = null; return Math.atan2(S.tgt.y - S.py, S.tgt.x - S.px); } // 탭 조준: 찍은 좀비를 따라감 (죽으면 그 자리)
   if ((S.aimHold || !S.autoAim) && S.aimDir != null) return S.aimDir;
   if (!S.autoAim) return Math.atan2(S.my - S.py, S.mx - S.px);
   let best = null, bd = 1e9;
@@ -1550,7 +1552,7 @@ function drawMain() {
   const ready = S.chambers.filter(c => !c.out).length;
   for (let k = 0; k < S.chambers.length; k++) px(S.px - (S.chambers.length - 1)*5 + k*10, S.py + 34, 6, k < ready ? '#f4efe6' : '#4a3a2c');
   if (S.mode === 'play') { // 조준선: 수동이면 길고 밝게
-    const a = aimAngle(), man = !S.autoAim || S.aimHold, n = man ? 12 : 7;
+    const a = aimAngle(), man = !S.autoAim || S.aimHold || (ctrlMode() === 'tap' && S.tgt), n = man ? 12 : 7;
     for (let k = 2; k < n; k++) px(S.px + Math.cos(a)*k*22, S.py + Math.sin(a)*k*22, man ? 6 : 4, man ? 'rgba(127,211,245,.7)' : 'rgba(255,255,255,.35)');
   }
   for (const t of S.texts) { ctx.globalAlpha = Math.min(1, t.t*3); text(t.s, t.x, t.y, t.big ? 26 : 18, t.c, 'center', 900); ctx.globalAlpha = 1; }
@@ -1570,6 +1572,29 @@ function drawMain() {
   if (S.mode === 'verdict') drawVerdict();
   if (S.mode === 'result') drawResult();
 }
+function joyDraw(x, y, kx, ky, r, col, label, active) { // 도트 조이스틱: 바깥 고리 + 방향 점 + 손잡이 (+ 이름)
+  ctx.globalAlpha = active ? .85 : .35;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = 'rgba(20,8,50,.35)'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = UI.ink; ctx.stroke(); ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke();
+  for (let k = 0; k < 4; k++) { const an = k*Math.PI/2; ctx.fillStyle = col; ctx.fillRect(Math.round(x + Math.cos(an)*(r - 14)) - 4, Math.round(y + Math.sin(an)*(r - 14)) - 4, 8, 8); }
+  pxBox(x + kx - 26, y + ky - 26, 52, 52, col, {shade:'rgba(0,0,0,.25)', sh:2});
+  if (label) uiTxt(label, x, y + r + 26, 18, '#fff');
+  ctx.globalAlpha = 1;
+}
+function drawControls() { // 조작 모드별 터치 UI
+  if (S.mode !== 'play') return;
+  const ts = Object.values(touches), mv = ts.find(o => o.kind === 'move'), am = ts.find(o => o.kind === 'aim');
+  const knob = o => { const k = stick(o, o.cx, o.cy, 70), m = Math.min(1, 70/(k.d || 1)); return [k.dx*m, k.dy*m]; };
+  if (ctrlMode() === 'tap') {
+    const [kx, ky] = mv ? knob(mv) : [0, 0]; joyDraw(TAPJOY.x, TAPJOY.y, kx, ky, TAPJOY.r, '#ffffff', mv ? '' : '이동', !!mv);
+    if (S.tgt) { const T = performance.now()/1000, x = S.tgt.x, y = S.tgt.y, r = 22 + Math.sin(T*8)*3, col = S.tgt.e && !S.tgt.e.dead ? '#ff4a4a' : '#8ad8ff'; // 조준점: 좀비에 고정이면 빨강
+      ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+      for (let k = 0; k < 4; k++) { const an = k*Math.PI/2 + T; ctx.fillStyle = col; ctx.fillRect(Math.round(x + Math.cos(an)*(r + 8)) - 4, Math.round(y + Math.sin(an)*(r + 8)) - 4, 8, 8); } }
+    else if (S.t < 6) uiTxt('조준할 곳을 누르세요', W/2, PMIN + 40, 24, '#8ad8ff');
+  } else {
+    if (mv) { const [kx, ky] = knob(mv); joyDraw(mv.x, mv.y, kx, ky, 70, '#ffffff', '', true); } else joyDraw(150, BOT - 130, 0, 0, 70, '#ffffff', '이동', false); // 손 떼면 자리 안내
+    if (am) { const [kx, ky] = knob(am); joyDraw(am.x, am.y, kx, ky, 70, '#8ad8ff', '', true); } else joyDraw(W - 150, BOT - 130, 0, 0, 70, '#8ad8ff', '조준', false);
+  }
+}
 function hud() {
   const L = S.level;
   ctx.fillStyle = '#2a1450'; ctx.fillRect(0, 0, W, TOP); ctx.fillStyle = UI.ink; ctx.fillRect(0, TOP - 4, W, 4);
@@ -1581,12 +1606,9 @@ function hud() {
   uiTxt(L.raid ? stage : '레벨 ' + L.id + ' · ' + stage, W - 16, 28, 21, UI.gold, 'right');
   uiTxt((L.raid ? '남은 ' + Math.max(0, Math.ceil(RAID.time - S.t)) + '초' : Math.floor(S.t/60) + ':' + String(Math.floor(S.t%60)).padStart(2, '0')) + ' · 처치 ' + S.kills, W - 16, 56, 17, L.raid && RAID.time - S.t < 15 ? '#ff9a8a' : '#fff', 'right');
   const bb = S.boss && !S.boss.dead ? S.boss : S.mid && !S.mid.dead ? S.mid : null;
-  uiBtn(AIM_BTN, '조준: ' + (S.autoAim ? '자동' : '수동'), S.autoAim ? 'purple' : 'blue', 19);
+  if (ctrlMode() === 'tap') uiBtn(AIM_BTN, S.tgt ? '조준 풀기' : '조준: 자동', S.tgt ? 'blue' : 'purple', 19); else uiBtn(AIM_BTN, '조준: ' + (S.autoAim ? '자동' : '수동'), S.autoAim ? 'purple' : 'blue', 19);
   uiGear(GEAR.x + 28, GEAR.y + 26, 21);
-  for (const o of Object.values(touches)) { // 터치 스틱 표시
-    const col = o.kind === 'aim' ? '#8ad8ff' : '#fff'; ctx.globalAlpha = .45; ctx.beginPath(); ctx.arc(o.x, o.y, 70, 0, TAU); ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.stroke();
-    const s = stick(o, o.cx, o.cy, 70); ctx.beginPath(); ctx.arc(o.x + s.dx*Math.min(1, 70/(s.d || 1)), o.y + s.dy*Math.min(1, 70/(s.d || 1)), 28, 0, TAU); ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
-  }
+  drawControls();
   if (bb) { // 보스 HP 바: 이름 + 격노 표시
     uiBar(40, TOP + 6, W - 220, 30, bb.hp/bb.max, bb.guardT > 0 ? ['#c8c0e0', '#8a80b0'] : bb.enraged ? ['#ff8a7a', '#d8201a'] : ['#ffe45a', '#e8a81a']);
     uiTxt(bossName(bb) + (bb.enraged ? ' · 격노' : '') + (bb.guardT > 0 ? ' · 방패' : ''), 54, TOP + 29, 17, '#fff', 'left');
@@ -2647,10 +2669,11 @@ function musicTick() { // 짧은 5음계 루프 (리드 + 베이스)를 0.35초 
 }
 // ---------- 설정 팝업 (전투 중·로비) ----------
 const SET = {back:'lobby', confirm:false, cheat:false, taps:[], cheatMsg:'', cheatUntil:0};
-const SET_TITLE = {x:200, y:320, w:320, h:70}; // '설정' 글자를 1.8초 안에 5번 누르면 치트 패널
-const SET_PANEL = {x:90, y:290, w:540, h:740}, SET_BTN1 = {x:130, y:810, w:460, h:90}, SET_BTN2 = {x:130, y:920, w:460, h:90};
-const SET_ROWS = [{key:'sfx', label:'효과음', y:420, icon:'speaker', def:.8}, {key:'music', label:'음악', y:545, icon:'note', def:.6}];
-const SET_VIB = {x:410, y:640, w:180, h:60}; // 진동 켜기/끄기
+const SET_TITLE = {x:200, y:215, w:320, h:70}; // '설정' 글자를 1.8초 안에 5번 누르면 치트 패널
+const SET_PANEL = {x:90, y:250, w:540, h:860}, SET_BTN1 = {x:130, y:890, w:460, h:90}, SET_BTN2 = {x:130, y:1000, w:460, h:90};
+const SET_CTRL = [{id:'stick', label:'좌우 스틱', x:130, y:760, w:224, h:64}, {id:'tap', label:'탭 조준', x:366, y:760, w:224, h:64}]; // 조작 방식
+const SET_ROWS = [{key:'sfx', label:'효과음', y:380, icon:'speaker', def:.8}, {key:'music', label:'음악', y:500, icon:'note', def:.6}];
+const SET_VIB = {x:410, y:592, w:180, h:60}; // 진동 켜기/끄기
 const SET_BAR = r => ({x:190, y:r.y + 22, w:380, h:70}), SET_ICON = r => ({x:100, y:r.y - 26, w:80, h:70});
 function openSettings() { SET.back = S.mode; SET.confirm = false; S.mode = 'settings'; }
 function closeSettings() { S.mode = SET.back; SET.confirm = false; SET.cheat = false; }
@@ -2676,6 +2699,7 @@ function settingsTap(x, y, hit) {
     if (hit(SET_BAR(r))) { setVol(r.key, Math.round((x - 200)/360*10)/10); return; }
     if (hit(SET_ICON(r))) { setVol(r.key, META.set[r.key] > 0 ? 0 : r.def); return; }
   }
+  for (const c of SET_CTRL) if (hit(c)) { META.set.ctrl = c.id; saveMeta(); S.tgt = null; S.aimDir = null; return; }
   if (hit(SET_VIB)) { META.set.vib = META.set.vib === 0 ? 1 : 0; saveMeta(); buzz(30); return; }
   if (hit(SET_BTN1)) { closeSettings(); return; }
   if (hit(SET_BTN2)) {
@@ -2719,8 +2743,10 @@ function drawSettings() {
     uiTxt(r.label, 190, r.y + 14, 34, '#fff', 'left'); uiTxt(Math.round(v*100) + '%', 590, r.y + 14, 30, on ? UI.gold : '#a49cb8', 'right');
     uiBar(190, r.y + 38, 380, 34, v, on ? ['#ffd23a', '#ff9a2a'] : ['#8a80a8', '#625a78']);
   }
-  const vib = META.set.vib !== 0; uiTxt('진동', 190, 684, 34, '#fff', 'left'); uiPhone(140, 672, 24, vib); uiBtn(SET_VIB, vib ? '켜짐' : '꺼짐', vib ? 'green' : 'gray', 28);
-  uiLabel('막대를 눌러 크기 조절 · 아이콘을 누르면 끄기/켜기', W/2, 770, 18, '#e6dcff', 'center', 700);
+  const vib = META.set.vib !== 0; uiTxt('진동', 190, 636, 34, '#fff', 'left'); uiPhone(140, 624, 24, vib); uiBtn(SET_VIB, vib ? '켜짐' : '꺼짐', vib ? 'green' : 'gray', 28);
+  uiTxt('조작', 140, 738, 30, '#fff', 'left'); uiLabel(ctrlMode() === 'tap' ? '왼쪽 아래 스틱 이동 · 누른 곳 조준' : '왼쪽 반 이동 · 오른쪽 반 조준', 590, 736, 17, '#e6dcff', 'right', 700);
+  for (const c of SET_CTRL) uiBtn(c, c.label, ctrlMode() === c.id ? 'orange' : 'gray', 26);
+  uiLabel('막대를 눌러 크기 조절 · 아이콘을 누르면 끄기/켜기', W/2, 858, 17, '#e6dcff', 'center', 700);
   const inGame = SET.back === 'play';
   uiBtn(SET_BTN1, inGame ? '계속하기' : '닫기', 'green', 40);
   uiBtn(SET_BTN2, inGame ? (SET.confirm ? '정말 나가기 (이번 판은 사라져요)' : '로비로 나가기') : '타이틀로', inGame ? 'red' : 'purple', inGame && SET.confirm ? 26 : 36);
@@ -2811,25 +2837,35 @@ function tap(x, y) {
   if (S.mode === 'fusion') { if (S.fz.t > 2.7) fusionDone(); return true; }
   if (S.mode === 'freeup') { const c = freeCand(), k = c.findIndex((b, i) => hit(FREE_TILE(i))), j = S.fu.items.findIndex((id, i) => hit(ITEM_TILE(i))); if (S.fu.t > .3) { if (k >= 0) freePick(c[k]); else if (j >= 0) freeItem(S.fu.items[j]); } return true; }
   if (S.mode === 'play' && hit(GEAR)) { openSettings(); return true; }
-  if (S.mode === 'play' && hit(AIM_BTN)) { S.autoAim = !S.autoAim; S.aimDir = null; return true; }
+  if (S.mode === 'play' && hit(AIM_BTN)) { if (ctrlMode() === 'tap' && S.tgt) S.tgt = null; else { S.autoAim = !S.autoAim; S.aimDir = null; } return true; }
   return false;
 }
 // 마우스: 자동 조준이면 누르고 있는 동안 커서 쪽으로 이동 / 수동 조준이면 커서 방향으로 조준 (이동은 키보드)
 cv.addEventListener('mousedown', e => { const [x, y] = pt(e); if (!tap(x, y) && S.autoAim) S.goal = {x, y}; });
 cv.addEventListener('mousemove', e => { [S.mx, S.my] = pt(e); S.aimDir = null; if (S.goal) S.goal = {x:S.mx, y:S.my}; });
 addEventListener('mouseup', () => { S.goal = null; MS.hold = false; });
-// 터치: 왼쪽 절반 = 이동 조이스틱, 오른쪽 절반 = 조준 스틱 (누르는 동안 수동 조준, 떼면 원래 모드)
+// 터치 조작 (설정 > 조작):
+//  stick = 좌우 반쪽 조이스틱: 왼쪽 반 누른 자리에 이동 스틱, 오른쪽 반 누른 자리에 조준 스틱
+//  tap   = 탭 조준: 왼쪽 아래 고정 이동 스틱 + 그 밖을 누르면 그곳을 조준 (좀비 근처를 누르면 그 좀비를 따라 조준, 끌면 계속 바뀜)
 const touches = {};
+const TAPJOY = {x:118, y:BOT - 120, r:78}; // 탭 조준 모드의 고정 이동 스틱 자리
 const stick = (o, x, y, max) => { const dx = x - o.x, dy = y - o.y, d = Math.hypot(dx, dy); return {dx, dy, d, k:Math.min(1, d/max)/(d || 1)}; };
+function setTapTarget(x, y) { // 누른 곳에서 가장 가까운 좀비(몸 + 40px 안)가 있으면 그 좀비에 고정
+  let best = null, bd = 1e9; for (const e of S.enemies) { if (e.dead) continue; const d = Math.hypot(e.x - x, e.y - y); if (d < e.r + 40 && d < bd) { bd = d; best = e; } }
+  S.tgt = {x, y, e:best};
+}
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const [x, y] = pt(t);
     if (tap(x, y)) continue;
-    const kind = x < W/2 ? 'move' : 'aim';
+    if (S.mode !== 'play') continue;
+    const kind = ctrlMode() === 'tap' ? (Math.hypot(x - TAPJOY.x, y - TAPJOY.y) < TAPJOY.r*1.6 ? 'move' : 'aim') : x < W/2 ? 'move' : 'aim';
     if (Object.values(touches).some(o => o.kind === kind)) continue;
-    touches[t.identifier] = {kind, x, y, cx:x, cy:y};
-    if (kind === 'move') S.joy = {x:0, y:0}; else S.aimHold = true;
+    const o = touches[t.identifier] = {kind, x, y, cx:x, cy:y};
+    if (kind === 'move') { if (ctrlMode() === 'tap') { o.x = TAPJOY.x; o.y = TAPJOY.y; } S.joy = {x:0, y:0}; }
+    else if (ctrlMode() === 'tap') setTapTarget(x, y);
+    else S.aimHold = true;
   }
 }, {passive:false});
 cv.addEventListener('touchmove', e => {
@@ -2839,6 +2875,7 @@ cv.addEventListener('touchmove', e => {
     [o.cx, o.cy] = pt(t);
     const s = stick(o, o.cx, o.cy, 70);
     if (o.kind === 'move') S.joy = {x:s.dx*s.k, y:s.dy*s.k};
+    else if (ctrlMode() === 'tap') setTapTarget(o.cx, o.cy);
     else if (s.d > 15) S.aimDir = Math.atan2(s.dy, s.dx);
   }
 }, {passive:false});
@@ -2847,7 +2884,7 @@ const touchEnd = e => {
   for (const t of e.changedTouches) {
     const o = touches[t.identifier]; if (!o) continue;
     delete touches[t.identifier];
-    if (o.kind === 'move') S.joy = null; else S.aimHold = false;
+    if (o.kind === 'move') S.joy = null; else S.aimHold = false; // 수동 조준(자동 끔)이면 손을 떼도 마지막 방향 유지
   }
 };
 cv.addEventListener('touchend', touchEnd); cv.addEventListener('touchcancel', touchEnd);
