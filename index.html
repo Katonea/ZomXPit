@@ -2524,8 +2524,10 @@ function drawLobby() {
     ctx.save(); uiPath(P.x + 4, P.y + 4, P.w - 8, P.h - 8, 26); ctx.clip(); uiRays(610, .18, T); ctx.restore();
     uiRibbon(360, P.y, 380, '자동 사냥 보상', 'gold', 36);
     uiLabel('사냥 시간 ' + hm(LOBBY.pop.h), 360, P.y + 84, 24, '#6a5a8a', 'center', 900);
-    for (const [dx, dy] of [[-40, 18], [40, 18], [0, 30], [-20, -8], [22, -6]]) uiBall(230 + dx*.6, 610 + dy*.6, 26, []); // 핀볼 더미
-    uiTxt('+' + LOBBY.pop.n, 290, 646, fitWrap('+' + LOBBY.pop.n, 84, 300, 1, 900, 30).size, UI.gold, 'left'); uiLabel('받으면 보유 핀볼에 더해져요', 360, 708, 21, '#6a5a8a', 'center', 700);
+    const t = '+' + LOBBY.pop.n, fs = fitWrap(t, 84, 300, 1, 900, 30).size; ctx.font = '900 ' + fs + 'px ' + FONT;
+    const tw = ctx.measureText(t).width, x0 = 360 - (100 + 24 + tw)/2; // 더미 폭 100 + 간격 24 + 글자 폭을 한 묶음으로 가운데
+    for (const [dx, dy] of [[-40, 18], [40, 18], [0, 30], [-20, -8], [22, -6]]) uiBall(x0 + 50 + dx*.6, 616 + dy*.6, 26, []); // 핀볼 더미
+    uiTxt(t, x0 + 124, 616 + fs*.36, fs, UI.gold, 'left'); uiLabel('받으면 보유 핀볼에 더해져요', 360, 708, 21, '#6a5a8a', 'center', 700);
     uiBtn(LB.ok, '받기', 'green', 38);
   }
   if (performance.now() < LOBBY.msgUntil) { uiPill(130, 880, 460, 60, '#d8302a'); uiTxt(LOBBY.msg, W/2, 920, 26); }
