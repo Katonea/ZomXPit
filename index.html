@@ -1641,6 +1641,7 @@ function drawMain() {
   if (S.mode === 'balls') { drawBalls(); return; }
   if (S.mode === 'chars') { tutDone('char'); drawChars(); return; }
   ctx.save();
+  if (S.mode !== 'play') S.shake = 0; // 딤드 화면(레벨업·캡슐·결과 등) 뒤는 흔들지 않고 멈춤
   if (S.shake > 0) ctx.translate(Math.round((Math.random() - .5)*S.shake), Math.round((Math.random() - .5)*S.shake)); // 화면 흔들림 (연출용이라 시드 난수 아님)
   drawBoard();
   for (const f of S.fx) if (f.k === 'splat' && f.T - f.t > f.d) { ctx.globalAlpha = Math.min(.85, f.t); for (const [dx, dy, z] of f.dots) px(f.x + dx, f.y + dy, z, '#7a1414'); } // 핏자국은 바닥에
