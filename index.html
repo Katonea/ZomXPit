@@ -619,7 +619,8 @@ function humanRows(L, view, mood, f) { // view 'front' | 'back', f = 걸음 프�
   else { rows = [...H.r, ...(HFACE[mood] || HFACE['']), ...body];
     for (const k in H.side || {}) { const a = [...rows[k]]; [...H.side[k]].forEach((ch, i) => { a[12 + i] = ch; }); rows[k] = a.join(''); } // 포니테일
     if (H.frame) for (const k of [5, 6, 7]) { const a = [...rows[k]]; a[3] = H.frame; a[12] = H.frame; rows[k] = a.join(''); } }   // 후드·곱슬머리가 얼굴 옆을 감쌈
-  if (f) { rows[14] = rows[14].replace('ppp..ppp', 'ppp...pp').replace('ccc..ccc', 'ccc...cc'); rows[15] = rows[15].replace('bbb..bbb', 'bbb.....'); } // 걸음: 오른발을 듦
+  if (f === 1) { rows[14] = rows[14].replace('ppp..ppp', 'ppp...pp').replace('ccc..ccc', 'ccc...cc'); rows[15] = rows[15].replace('bbb..bbb', 'bbb.....'); } // 걸음: 오른발을 듦
+  if (f === 2) { rows[14] = rows[14].replace('ppp..ppp', 'pp...ppp').replace('ccc..ccc', 'cc...ccc'); rows[15] = rows[15].replace('bbb..bbb', '.....bbb'); } // 왼발을 듦
   return rows;
 }
 function humanCanvas(rows, pal) { // 글자 지도 → 캔버스 + 바깥 윤곽(좀비와 같은 색)
@@ -972,6 +973,7 @@ function spawnFormation() {
     e.x = cx + c*FORM_GAP.x; e.y = top - r*FORM_GAP.y; e.ph = ph;
     if (!ENEMY[t].bomb) e.spd = Math.min(slow, cap); // 폭탄병 행은 대형을 앞질러 돌격, 나머지는 아래 대형을 따라잡지 않음
     e.stopY = stop + (back - r)*FORM_GAP.y;        // 원거리는 대형 모양 그대로 멈춤 (앞 행이 아래)
+    if (L.raid) { e.y = e.stopY - 10; e.rise = e.riseT = .8 + rand()*.5; if (!ci) sfx('rise', .5); } // 침략: 상대가 부른 좀비는 땅에서 솟음
   }
   return cells.length;
 }
@@ -1228,6 +1230,7 @@ function update(dt) {
   const ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
   const sm = S.slowT > 0 ? .5 : 1; S.px += mx*ch.spd*sm*dt; S.py += my*ch.spd*sm*dt;
   for (const e of S.enemies) { // 적 몸을 통과하지 못함
+    if (e.rise > 0) continue;
     const dx = S.px - e.x, dy = S.py - e.y, d = Math.hypot(dx, dy), m = e.r + ch.r;
     if (d < m && d > 0) { S.px = e.x + dx/d*m; S.py = e.y + dy/d*m; }
   }
@@ -1238,6 +1241,7 @@ function update(dt) {
   // 적
   for (const e of S.enemies) {
     if (e.dead) continue;
+    if (e.rise > 0) { if ((e.rise -= dt) <= 0) { e.rise = 0; S.fx.push({k:'ring', x:e.x, y:e.y + e.r*.95, r:e.r, t:.25, T:.25, c:'#a07a48'}); } continue; } // 땅에서 솟는 중
     const d = ENEMY[e.type];
     let m = 1;
     if (e.frozenT > 0) { e.frozenT -= dt; m = 0; } else if (e.slowT > 0) { e.slowT -= dt; m = 1 - e.slow; }
@@ -1258,7 +1262,7 @@ function update(dt) {
         if (e.stompWarn > 0) { if ((e.stompWarn -= dt) <= 0) { S.shocks.push({x:e.x, y:e.y + e.r*.5, r:e.r, max:360, dmg:d.stompDmg, hit:false}); S.shake = Math.max(S.shake, 10); e.bump = .2; } }
         else if ((e.stompT -= dt*m*k) <= 0) { e.stompT = d.stompEvery; e.stompWarn = .6; }
       }
-      if ((e.summonT -= dt*m*(rage ? 1.6 : 1)) <= 0) { e.summonT = d.summonEvery; for (let i = 0; i < d.summon; i++) { const s = spawn([].concat(d.summonType || 'knight')[i % [].concat(d.summonType || 'knight').length]); const per = Math.min(d.summon, 5), row = Math.floor(i/per), col = i%per - (Math.min(per, d.summon - row*per) - 1)/2; s.x = Math.max(S.fl + s.r, Math.min(S.fr - s.r, e.x + col*46)); s.y = e.y + e.r + 20 + row*44; } } // 5마리씩 줄지어 소환
+      if ((e.summonT -= dt*m*(rage ? 1.6 : 1)) <= 0) { e.summonT = d.summonEvery; for (let i = 0; i < d.summon; i++) { const s = spawn([].concat(d.summonType || 'knight')[i % [].concat(d.summonType || 'knight').length]); const per = Math.min(d.summon, 5), row = Math.floor(i/per), col = i%per - (Math.min(per, d.summon - row*per) - 1)/2; s.x = Math.max(S.fl + s.r, Math.min(S.fr - s.r, e.x + col*46)); s.y = e.y + e.r + 20 + row*44; s.rise = s.riseT = .8 + i*.07; } sfx('rise', .5); } // 5마리씩 줄지어 소환
       if (e.rival && e.y >= d.stopAt*.6) rivalFire(e, dt, m, k);
       if (d.guardEvery) { // 방패 들기: guardTime초 동안 아래쪽 공을 막음
         if (e.guardT > 0) e.guardT -= dt; else if ((e.guardCd -= dt) <= 0) { e.guardCd = d.guardEvery; e.guardT = d.guardTime; }
@@ -1366,7 +1370,7 @@ function update(dt) {
       recover(s); S.caught = true; S.fx.push({k:'ring', x:S.px, y:S.py, r:30, t:.25, T:.25, c:'#9fffb0'}); continue;
     }
     for (const e of S.enemies) {
-      if (e.dead) continue;
+      if (e.dead || e.rise > 0) continue;
       const d = ENEMY[e.type];
       if (d.barLen) bounceBar(s, e, d);
       const dx = s.x - e.x, dy = s.y - e.y, dist = Math.hypot(dx, dy);
@@ -1504,10 +1508,26 @@ function drawRival(e) { // 침략 상대: 다른 유저의 사람 캐릭터를 �
   const st = e.flashT > 0 ? 'hit' : e.enraged && Math.floor(S.t*6)%2 ? 'rage' : e.frozenT > 0 ? 'frozen' : '', by = e.bump > 0 ? -6 : 0;
   if (e.stompWarn > 0) stompWarn(e);
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(Math.round(e.x - e.r*.8), Math.round(e.y + e.r*1.05), Math.round(e.r*1.6), 12);
-  const mv = e.lx != null && Math.hypot(e.x - e.lx, e.y - e.ly) > .3; e.lx = e.x; e.ly = e.y;
-  blit(rivalSprite(e.rival, e.rest && Math.floor(S.t*12)%2 ? 'flash' : st, mv && Math.floor(S.t*6)%2 ? 1 : 0), e.x, e.y + by, e.r*2.2/16); // 쉬는 동안 깜빡 = 다음 패턴 예고
+  if (e.lx != null && Math.hypot(e.x - e.lx, e.y - e.ly) > .05) e.mvT = S.t; e.lx = e.x; e.ly = e.y;
+  const mv = S.t - (e.mvT ?? -9) < .2, st4 = Math.floor(S.t*8)%4, f = mv ? [1, 0, 2, 0][st4] : 0, ps = e.r*2.2/16; // 걷기: 오른발·모음·왼발·모음, 발 들 때 몸이 통 튐
+  const bob = mv ? (f ? -Math.round(ps) : 0) : Math.round(Math.sin(S.t*3)*ps*.5), sway = mv ? (f === 1 ? 1 : f === 2 ? -1 : 0)*ps*.5 : 0;
+  blit(rivalSprite(e.rival, e.rest && Math.floor(S.t*12)%2 ? 'flash' : st, f), e.x + sway, e.y + by + bob, ps); // 쉬는 동안 깜빡 = 다음 패턴 예고
+}
+function drawRise(e) { // 땅에서 솟음: 0~.35 흙이 들썩이며 손 두 개가 불쑥, .35~1 몸이 흙을 뚫고 올라옴 (땅 아래는 잘려 안 보임)
+  const q = 1 - e.rise/e.riseT, gy = e.y + e.r*.95, w = e.r*1.5, T = S.t*30 + e.id;
+  ctx.fillStyle = '#3a2618'; ctx.beginPath(); ctx.ellipse(e.x, gy, w*.75, w*.26, 0, 0, TAU); ctx.fill(); // 파인 구덩이
+  for (let k = 0; k < 7; k++) { const a = k/7*Math.PI + .2, j = Math.sin(T*.4 + k*2)*(q < .35 ? 2 : 0); px(e.x + Math.cos(a)*w*.78, gy - Math.sin(a)*w*.18 + j, 10 + (k%3)*3, k%2 ? '#6a4a2a' : '#8a6438'); } // 흙덩이 테두리 (들썩)
+  if (q < .35) { const u = q/.35, h = 6 + u*26; // 손 두 개가 흙을 헤치고 나옴
+    for (const sx of [-1, 1]) { const hx = e.x + sx*w*.28 + Math.sin(T*.5 + sx)*2, hy = gy - h;
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(Math.round(hx - 7), Math.round(hy - 3), 14, h + 3); ctx.fillStyle = ZSK; ctx.fillRect(Math.round(hx - 5), Math.round(hy), 10, h);
+      for (let f = 0; f < 3; f++) { ctx.fillStyle = '#1a1420'; ctx.fillRect(Math.round(hx - 7 + f*5), Math.round(hy - 10), 4, 9); ctx.fillStyle = ZSKD; ctx.fillRect(Math.round(hx - 6 + f*5), Math.round(hy - 9), 2, 8); } } // 손가락
+  } else { const u = Math.min(1, (q - .35)/.65), e2 = 1 - (1 - u)**3; // 몸: 빠르게 쑥 올라오다 멈춤
+    ctx.save(); ctx.beginPath(); ctx.rect(e.x - 200, gy - 400, 400, 400 + w*.1); ctx.clip();
+    const y0 = e.y; e.y = y0 + (1 - e2)*e.r*2.4; e.rise = 0; drawUnit(e); e.rise = (1 - q)*e.riseT; e.y = y0; ctx.restore(); }
+  for (let k = 0; k < 6; k++) { const v = (q*2.2 + k/6)%1; if (q > .9) break; px(e.x + (k - 2.5)*w*.22 + (k%2 ? 1 : -1)*v*18, gy - Math.sin(v*Math.PI)*42 - 6, 7, k%2 ? '#6a4a2a' : '#a07a48'); } // 튀는 흙
 }
 function drawEnemy(e) {
+  if (e.rise > 0) { drawRise(e); return; }
   if (e.type !== 'rival' && !ENEMY[e.type].boss && S.mode === 'play' && META.tut && !META.tut.seen[e.type]) { S.seenAt = S.seenAt || {}; if (S.seenAt[e.type] == null) S.seenAt[e.type] = S.t; // 처음 보는 좀비 이름표 (3.5초)
     if (S.t - S.seenAt[e.type] > 3.5) { META.tut.seen[e.type] = 1; saveMeta(); } else { const nm = ENEMY[e.type].name; ctx.font = '900 17px ' + FONT; const w = ctx.measureText(nm).width + 18; pxBox(e.x - w/2, e.y - e.r - 58, w, 30, '#ffd23a', {shade:null, light:null}); uiLabel(nm, e.x, e.y - e.r - 37, 17, UI.ink, 'center', 900); } }
   if (e.type === 'rival') drawRival(e); else drawUnit(e);
@@ -2696,6 +2716,7 @@ const SFX = {
   up:t => arp([523, 659, 784, 1047], t, .07, 'triangle', .35),
   lvup:t => arp([392, 523, 659, 784, 1047], t, .06, 'triangle', .35),
   hurt:t => tone(140, t, .2, 'sawtooth', .4, AUD.sg, -70),
+  rise:t => { tone(70, t, .35, 'sawtooth', .35, AUD.sg, -20); tone(150, t + .25, .12, 'square', .2, AUD.sg, 120); }, // 흙 뚫고 솟음: 낮은 우르릉 + 퍽
   bump:t => tone(520, t, .1, 'triangle', .3, AUD.sg, 200),
   coin:t => { tone(988, t, .05, 'square', .25, AUD.sg); tone(1319, t + .06, .12, 'square', .25, AUD.sg); },
   gift:t => arp([784, 988, 1175, 1568, 1976], t, .06, 'sine', .35, .16),
