@@ -1271,7 +1271,7 @@ function update(dt) {
     const dx = S.px - e.x, dy = S.py - e.y, d = Math.hypot(dx, dy), m = e.r + ch.r;
     if (d < m && d > 0) { S.px = e.x + dx/d*m; S.py = e.y + dy/d*m; }
   }
-  S.px = Math.max(S.fl + ch.r, Math.min(S.fr - ch.r, S.px)); S.py = Math.max(PMIN, Math.min(BOT - ch.r, S.py));
+  S.px = Math.max(S.fl + ch.r, Math.min(S.fr - ch.r, S.px)); S.py = Math.max(TOP + ch.r, Math.min(BOT - ch.r, S.py)); // 보드 전체를 걸어 다님
   // 발사: 회수되어 있는 칸만 0.1초 간격으로 한 발씩
   if ((S.fireT -= dt) <= 0 && S.enemies.length) { const c = S.chambers.find(c => !c.out); if (c) { launch(c); S.fireT = .1; } }
   updateWaves(dt);
@@ -1526,8 +1526,6 @@ function drawDeck() { // 보드 아래 조이스틱 받침대: 양옆 벽과 이
 }
 function drawBoard() {
   ctx.drawImage(BG, 0, 0, W, H);
-  ctx.fillStyle = 'rgba(122,154,92,.08)'; ctx.fillRect(S.fl, PMIN, S.fw, BOT - PMIN); // 이동 가능 구역
-  for (let x = S.fl; x < S.fr - 4; x += 16) { ctx.fillStyle = '#c8a070'; ctx.fillRect(x, PMIN, 8, 2); }
   ctx.fillStyle = '#5a4a3a'; ctx.fillRect(S.fl, BOT, S.fw, 8); // 보드 바닥
   drawDeck();
   drawWall(0, S.fl); drawWall(S.fr, W - S.fr);
@@ -3118,8 +3116,9 @@ function selfTest() {
     ok(S.mid && S.wave === 2, '중간 보스는 웨이브 3 시작 때');
     hurt(S.mid, 1e9); for (let i = 0; i < 120*2; i++) update(STEP);
     ok(S.fw === FIELD.openW, '중간 보스 처치 → 보드 확장');
+    S.picks = []; S.bc = S.fu = null; S.mode = 'play'; // 캡슐 화면은 건너뜀
     while (!S.wavesDone) { S.waveT = 0; update(STEP); }
-    for (let i = 0; i < 120*RULE.bossDelay + 2; i++) update(STEP);
+    for (let i = 0; i < 120*RULE.bossDelay + 10; i++) update(STEP); // 소수 오차로 한 스텝 모자랄 때가 있어 여유
     ok(S.boss && S.boss.type === LEVELS[0].boss, '웨이브 종료 + 중간 보스 처치 → 최종 보스');
     hurt(S.boss, 1e9);
     ok(S.mode === 'result' && S.result.win && S.result.first && S.result.pinball === 22 && META.maxLevel === 1, '클리어 보상·해금');
