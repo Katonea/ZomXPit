@@ -1419,10 +1419,9 @@ function burst(x, y, c, n) { for (let i = 0; i < n; i++) { const a = rand()*7, v
 
 // ---------- 렌더 ----------
 function text(s, x, y, size, c, al, w) { ctx.font = (w || 400) + ' ' + size + 'px ' + FONT; ctx.fillStyle = c || '#fff'; ctx.textAlign = al || 'left'; ctx.fillText(s, x, y); }
-function drawBall(x, y, r, fns, rot = 0) { // 회전하는 공: 줄무늬 스프라이트를 돌리고 하이라이트는 제자리에 고정
-  const R = Math.max(2, Math.round(r/3)), spr = ballSprite(fns, R);
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(rot); blit(spr, 0, 0, 3); ctx.restore();
-  px(x - R*1.1, y - R*1.1, 3, '#fff');
+function drawBall(x, y, r, fns, rot = 0) { // 전투 공: 16칸 도트 공(메뉴와 같은 그림)을 지름 2r로, 무늬는 회전 방향으로 16단계 돌고 빛·그늘은 고정
+  const d = Math.max(16, Math.round(r*2)), sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(ball16(fns, spinStep(rot)), Math.round(x - d/2), Math.round(y - d/2), d, d); ctx.imageSmoothingEnabled = sm;
 }
 function drawUnit(e) {
   const d = ENEMY[e.type], ps = Math.round(d.ps*(e.elite ? 1.5 : 1));
@@ -1772,22 +1771,26 @@ function uiItem(id, x, y, r) { // 아이템 배지: 둥근 사각 + 흰 문양 (
 function uiGlyph(id, x, y, s) { const g = GLYPH[id]; if (!g) return; ctx.save(); ctx.translate(x, y); ctx.scale(s, s); g(); ctx.restore(); }
 const BALL_GLY = {"fire":["...x....","...xx...","..xxx...","..xxxx..",".xxxxxx.",".xxyyxx.",".xxyyxx.","..xxxx.."],"frost":["...x....",".x.x.x..","..xxx...","xxxxxxx.","..xxx...",".x.x.x..","...x....","........"],"poison":["...x....","..xxx...","..xxx...",".xxxxx..",".xyxxx..",".xxxyx..","..xxx...","........"],"spark":["....xx..","...xx...","..xx....",".xxxxx..","...xx...","..xx....",".xx.....","........"],"bomb":[".....x..","....x...","..xxx...",".xxxxx..",".xxxxx..",".xxxxx..","..xxx...","........"],"split":["........",".xx..xx.","x..xx..x","x..xx..x",".xx..xx.","........","........","........"],"pierce":["...x....","..xxx...",".x.x.x..","...x....","...x....","...x....","..x.x...","........"],"vamp":["........",".x....x.",".xx..xx.",".xxxxxx.","..xxxx..","..x..x..","..x..x..","........"],"wind":["........","xxxxx...",".....x..","xxxxxx..","....x...","xxx.....","........","........"],"giant":["........",".xxxxxx.","x......x","x.xx.x.x","x......x",".xxxxxx.","........","........"],"homing":["...x....","..x.x...",".x.x.x..","x.xxx.x.",".x.x.x..","..x.x...","...x....","........"],"curse":["..xxx...",".x...x..",".x.x.x..",".x...x..","..xxx...","..x.x...","..x.x...","........"],"bleed":["...x....","...x....","..xxx...","..xxx...",".xxxxx..",".xxxxx..","..xxx...","........"],"crit":["...x....","...x....",".xxxxx..","xx.x.xx.",".xxxxx..","...x....","...x....","........"],"stun":[".x...x..","..x.x...","...x....","..x.x...",".x...x..","........","........","........"],"echo":["........","..xxx...",".x...x..","x.xxx.x.","x.x.x.x.","x.xxx.x.",".x...x..","..xxx..."],"meteor":["x.......",".x......","..x.....","...xxx..","...xxxx.","...xxxx.","....xx..","........"],"holy":["...x....","...x....",".xxxxx..","...x....","...x....","...x....","...x....","........"],"lucky":["........",".xx.xx..",".xx.xx..","...x....",".xx.xx..",".xx.xx..","....x...","........"],"rot":["..xxx...",".x.x.x..",".xxxxx..","..x.x...","..xxx...","........","........","........"],"swift":["........","x..x....",".x..x...","..x..x..",".x..x...","x..x....","........","........"],"acid":["..x.....","..xx....",".xxxx...",".xxxx...","..xx..x.",".....xx.",".....xx.","........"],"ricochet":["x.......",".x....x.","..x..x..","...xx...","........","........","........","........"],"shatter":["x..x..x.",".x.x.x..","..xxx...","xxx.xxx.","..xxx...",".x.x.x..","x..x..x.","........"],"nova":["...x....",".x.x.x..","..xxx...","xxxxxxx.","..xxx...",".x.x.x..","...x....","........"],"gravity":["..xxx...",".x...x..","x..x..x.","x.x.x.x.","x..x..x.",".x...x..","..xxx...","........"],"execute":["......x.",".....xx.","....xx..","...xx...","..xx....",".x......","x.......","........"],"prism":["...x....","..x.x...","..x.x...",".x...x..",".x...x..","xxxxxxx.","........","........"],"chrono":["..xxx...",".x...x..","x..x..x.","x..xx.x.","x.....x.",".x...x..","..xxx...","........"],"phoenix":["x.....x.","xx...xx.",".xx.xx..","..xxx...","...x....","..x.x...","........","........"]}; // 공 문양 8×8 (x = 흰 칸, y = 밝은 바탕색 칸)
 const ball16Cache = {};
-function ball16(fns) { // 16칸 공: 테 + 색(기능 수만큼 부채꼴로 나눔) + 왼쪽 위 빛 + 오른쪽 아래 그늘 + 문양
-  const key = fns.join(); if (ball16Cache[key]) return ball16Cache[key];
-  const c = mkCanvas(16, 16), x = c.getContext('2d'), n = fns.length;
+function ball16(fns, step = 0) { // 16칸 공: 색(기능 수만큼 부채꼴)·문양은 step(16방향)만큼 돌고, 테·왼쪽 위 빛·오른쪽 아래 그늘은 제자리에 고정
+  const key = fns.join() + ':' + step; if (ball16Cache[key]) return ball16Cache[key];
+  const n = fns.length, paint = Array.from({length:16}, () => Array(16).fill(null));                         // 돌기 전 무늬
+  for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const dx = i + .5 - 8, dy = j + .5 - 8; paint[j][i] = n ? FN[fns[Math.floor(((Math.atan2(dx, -dy) + TAU)%TAU)/TAU*n)%n]].color : '#e8e2f6'; }
+  if (n === 1) { const g = BALL_GLY[fns[0]] || [], gc = ['holy', 'prism', 'execute'].includes(fns[0]) ? '#4a2394' : '#ffffff';
+    g.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== '.') paint[4 + j][4 + i] = ch === 'y' ? lite(FN[fns[0]].color, .2) : gc; })); }
+  else if (n > 1) for (const [a, b] of [[7, 7], [8, 7], [7, 8], [8, 8]]) paint[b][a] = '#ffffff';
+  const c = mkCanvas(16, 16), x = c.getContext('2d'), an = -step*TAU/16, cs = Math.cos(an), sn = Math.sin(an);
   for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { const dx = i + .5 - 8, dy = j + .5 - 8, d = Math.hypot(dx, dy); if (d > 7.6) continue;
-    let col = n ? FN[fns[Math.floor(((Math.atan2(dx, -dy) + TAU)%TAU)/TAU*n)%n]].color : '#e8e2f6';
+    const si = Math.max(0, Math.min(15, Math.floor(8 + dx*cs - dy*sn))), sj = Math.max(0, Math.min(15, Math.floor(8 + dx*sn + dy*cs))); // 돌린 자리의 무늬를 가져옴 (가장 가까운 칸)
+    let col = paint[sj][si];
     if (d > 6.6) col = UI.ink; else if (dx + dy > 6) col = dark(col, .35); else if (dx + dy < -7) col = lite(col, .45);
     x.fillStyle = col; x.fillRect(i, j, 1, 1); }
-  x.fillStyle = '#ffffff'; x.fillRect(4, 3, 2, 1); x.fillRect(3, 4, 1, 2);
-  if (n === 1) { const g = BALL_GLY[fns[0]] || [], gc = ['holy', 'prism', 'execute'].includes(fns[0]) ? '#4a2394' : '#ffffff'; // 밝은 공은 문양을 진하게
-    g.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === '.') return; x.fillStyle = ch === 'y' ? lite(FN[fns[0]].color, .2) : gc; x.fillRect(4 + i, 4 + j, 1, 1); })); }
-  else if (n > 1) { x.fillStyle = '#ffffff'; x.fillRect(7, 7, 2, 2); }                                            // 여러 기능: 가운데 흰 점
+  x.fillStyle = '#ffffff'; x.fillRect(4, 3, 2, 1); x.fillRect(3, 4, 1, 2);                                          // 고정 빛
   return ball16Cache[key] = c;
 }
-function uiBall(x, y, r, fns) { // 메뉴·카드용 공: 16칸 도트를 지름 약 2r로 (정수 배율이라 칸이 고름)
+const spinStep = rot => Math.round(((rot%TAU + TAU)%TAU)/TAU*16)&15;
+function uiBall(x, y, r, fns, rot = 0) { // 메뉴·카드용 공: 16칸 도트를 지름 약 2r로 (정수 배율이라 칸이 고름). rot을 주면 무늬가 돎
   const k = Math.max(1, Math.round(r*2/16)), d = 16*k, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(ball16(fns), Math.round(x - d/2), Math.round(y - d/2), d, d); ctx.imageSmoothingEnabled = sm;
+  ctx.drawImage(ball16(fns, spinStep(rot)), Math.round(x - d/2), Math.round(y - d/2), d, d); ctx.imageSmoothingEnabled = sm;
 }
 function uiHeart(x, y, s) { ctx.beginPath(); ctx.moveTo(x, y + s*.9); ctx.bezierCurveTo(x - s*1.1, y + s*.1, x - s*.75, y - s*.9, x, y - s*.38); ctx.bezierCurveTo(x + s*.75, y - s*.9, x + s*1.1, y + s*.1, x, y + s*.9); ctx.fillStyle = '#ff5a6a'; ctx.fill(); uiLine(UI.ink, Math.max(3, s*.2)); ctx.beginPath(); ctx.arc(x - s*.4, y - s*.2, s*.15, 0, TAU); ctx.fillStyle = '#fff'; ctx.fill(); }
 function uiHouse(x, y, s) { // 로비 탭 아이콘
@@ -2705,7 +2708,7 @@ function drawTitle() {
   const glow = (t, x, y, size, c, g) => { ctx.save(); ctx.shadowColor = g || c; ctx.shadowBlur = 30; uiTxt(t, x, y, size, c); ctx.restore(); uiTxt(t, x, y, size, c); };
   while (M.z.length < 7) { let p, tries = 0; do { p = {x:TW.l + 70 + Math.random()*(TW.r - TW.l - 140), y:TW.t + 80 + Math.random()*(TW.b - TW.t - 220)}; tries++; } while (tries < 20 && (M.z.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 110) || Math.hypot(M.b.x - p.x, M.b.y - p.y) < 140));
     M.z.push({...p, type:['knight', 'runner', 'helmet', 'priest', 'mage', 'bomber', 'convict', 'shield'][Math.floor(Math.random()*8)], ph:Math.random()*6, born:T}); }
-  const B = M.b, R = 22; B.x += B.vx*dt; B.y += B.vy*dt;
+  const B = M.b, R = 22; B.x += B.vx*dt; B.y += B.vy*dt; B.rot = (B.rot || 0) + 9*dt*Math.sign(B.vx || 1);
   if (B.x < TW.l + R || B.x > TW.r - R) { B.vx *= -1; B.x = Math.max(TW.l + R, Math.min(TW.r - R, B.x)); } if (B.y < TW.t + R || B.y > TW.b - R) { B.vy *= -1; B.y = Math.max(TW.t + R, Math.min(TW.b - R, B.y)); }
   for (const z of M.z) { if (z.dead || T - z.born < .4) continue; const dx = B.x - z.x, dy = B.y - z.y, d = Math.hypot(dx, dy);
     if (d < 40) { z.dead = T; M.kills++; sfx('kill', .04); const n = d || 1, k2 = B.vx*dx/n + B.vy*dy/n; B.vx -= 2*k2*dx/n; B.vy -= 2*k2*dy/n; // 공은 좀비에 맞고 튕김
@@ -2722,7 +2725,7 @@ function drawTitle() {
   for (const z of M.z) { ctx.globalAlpha = Math.min(1, (T - z.born)/.4); ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(z.x - 22, z.y + 30, 44, 8);
     if (z.dead) D(shade(SPR[z.type], 'flash'), z.x, z.y, 3.4); else D(SPR[z.type + (Math.floor(T*3 + z.ph)%2 ? '1' : '')], z.x, z.y + Math.sin(T*4 + z.ph)*2, 3); ctx.globalAlpha = 1; }
   for (const p of M.bits) { ctx.globalAlpha = Math.min(1, p.t*2); ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x/4)*4, Math.round(p.y/4)*4, p.s, p.s); } ctx.globalAlpha = 1;
-  uiBall(B.x, B.y, R, ['fire']);
+  uiBall(B.x, B.y, R, ['fire'], B.rot);
   brickWall(0, 0, W, TW.t, 't'); brickWall(0, TW.b, W, H - TW.b, 'b'); brickWall(0, TW.t, TW.l, TW.b - TW.t, 'l'); brickWall(TW.r, TW.t, W - TW.r, TW.b - TW.t, 'r'); // 사방 벽
   glow('ZOM', 230, 180, 110, '#ff3ad8'); glow('X', 360, 180, 96, '#3affd8'); glow('PIT', 500, 180, 110, '#ffe14a', '#ff8a3a');
   uiTxt('HI ' + String(M.kills*100).padStart(6, '0'), 360, 248, 26, '#3affd8');
