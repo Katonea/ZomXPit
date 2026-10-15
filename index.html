@@ -1337,7 +1337,8 @@ function update(dt) {
     }
     if (d.castEvery && e.y >= Math.min(e.stopY, d.stopAt || 1e9) - 1 && (e.castT -= dt*m) <= 0) { // 결계: 들어온 공을 1초 묶음
       e.castT = d.castEvery;
-      for (let i = 0; i < d.casts; i++) S.zones.push({x:S.fl + 60 + rand()*(S.fw - 120), y:PMIN - 80 + rand()*260, r:50, t:4});
+      for (let i = 0; i < d.casts; i++) S.zones.push({x:S.fl + 60 + rand()*(S.fw - 120), y:PMIN - 80 + rand()*260, r:50, t:4, sx:e.x, sy:e.y + e.r*.3, age:0}); // 입에서 불길이 날아가 떨어진 자리에 웅덩이
+      e.bump = .3; sfx('launch', .2);
     }
     e.x = Math.max(S.fl + e.r, Math.min(S.fr - e.r, e.x));
     if (e.bleed && !e.dead) { hurt(e, e.bleed.dps*dt); if ((e.bleed.t -= dt) <= 0) e.bleed = null; }
@@ -1348,7 +1349,7 @@ function update(dt) {
   separate();
   for (const q of S.delayed) if ((q.t -= dt) <= 0) { q.gone = true; S.inValve = !!q.valve; S.fx.push({k:'ring', x:q.x, y:q.y, r:q.r, t:.3, T:.3, c:q.c || FN.bomb.color}); for (const o of S.enemies) if (!o.dead && Math.hypot(o.x - q.x, o.y - q.y) < q.r + o.r) hurt(o, q.dmg*aoeMul()); S.inValve = false; }
   S.delayed = S.delayed.filter(q => !q.gone);
-  for (const z of S.zones) z.t -= dt;
+  for (const z of S.zones) { z.t -= dt; z.age = (z.age || 0) + dt; }
   S.zones = S.zones.filter(z => z.t > 0);
   for (const p of S.pillars) if ((p.t -= dt) <= 0) {
     p.gone = true; S.fx.push({k:'ring', x:p.x, y:p.y, r:p.r, t:.3, T:.3, c:'#fff6c0'});
@@ -1384,7 +1385,7 @@ function update(dt) {
       continue;
     }
     if (s.held > 0) { s.held -= dt; continue; } // 결계에 묶임
-    for (const z of S.zones) if (!s.zonesHit.has(z) && Math.hypot(s.x - z.x, s.y - z.y) < z.r) { s.zonesHit.add(z); s.held = 1; }
+    for (const z of S.zones) if (!s.zonesHit.has(z) && !(z.age < .45) && Math.hypot(s.x - z.x, s.y - z.y) < z.r) { s.zonesHit.add(z); s.held = 1; }
     if (s.held > 0) continue;
     if (s.vy < 0 && s.fns.includes('homing')) {
       let best = null, bd = 1e9;
@@ -1415,7 +1416,7 @@ function update(dt) {
       s.hit.set(e.id, S.t); s.bounced = true;
       if (blocks(e, s)) { // 막힘: 방패를 든 적은 정면에서 온 공을 완전히 막음 (피해 0)
         const ac = s.fns.includes('acid') ? fv('acid', s.E).pct : 0;
-        if (S.texts.length < 120) S.texts.push({x:e.x, y:e.y + e.r, s:'막힘', t:.5, c:'#b8c0d0'});
+        if (S.texts.length < 120) S.texts.push({x:e.x, y:e.y + e.r, s:'막힘', t:.5, c:'#b8c0d0'}); sfx('block', .06); tick(30);
       }
       else { onHit(s, e); if (s.ghost > 0 && !s.topHit) { s.ghost--; continue; } if (IV('corset') && Math.abs(dx) > Math.abs(dy)) continue; if (s.pierce > 0) { s.pierce--; continue; }
         if (s.ric > 0) { let best = null, bd = 1e9; for (const o of S.enemies) { if (o === e || o.dead) continue; const q = (o.x - s.x)**2 + (o.y - s.y)**2; if (q < bd) { bd = q; best = o; } }
@@ -1530,6 +1531,7 @@ function drawBoard() {
   drawDeck();
   drawWall(0, S.fl); drawWall(S.fr, W - S.fr);
   for (const z of S.zones) { // 불붙은 기름 웅덩이 (화염방사 좀비): 공이 잠깐 들러붙음
+    if (z.sx != null && z.age < .45) { const k = z.age/.45; for (let j = 0; j < 10; j++) { const q = Math.max(0, k - j*.035), x = z.sx + (z.x - z.sx)*q, y = z.sy + (z.y - z.sy)*q - Math.sin(q*Math.PI)*40, f = Math.sin(S.t*30 + j); px(x, y, 18 - j + f*3, j%3 ? '#ff8a2a' : '#ffe14a'); px(x, y, 8 - j*.5, '#fff6c0'); } continue; } // 불길이 포물선으로 날아감
     ctx.globalAlpha = Math.min(1, z.t)*.75; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, z.r*.62, 0, 0, TAU); ctx.fillStyle = '#2a2018'; ctx.fill();
     ctx.beginPath(); ctx.ellipse(z.x - z.r*.2, z.y - z.r*.15, z.r*.45, z.r*.22, 0, 0, TAU); ctx.fillStyle = '#4a3a5a'; ctx.fill(); // 기름 무지개 광택
     for (let k = 0; k < 9; k++) { const a = k*2.4, f = Math.sin(S.t*14 + k*1.7), fx = z.x + Math.cos(a)*z.r*.7*((k%3 + 1)/3), fy = z.y + Math.sin(a)*z.r*.4*((k%3 + 1)/3);
@@ -2804,6 +2806,7 @@ const SFX = {
   lvup:t => arp([392, 523, 659, 784, 1047], t, .06, 'triangle', .35),
   hurt:t => tone(140, t, .2, 'sawtooth', .4, AUD.sg, -70),
   rise:t => { tone(70, t, .35, 'sawtooth', .35, AUD.sg, -20); tone(150, t + .25, .12, 'square', .2, AUD.sg, 120); }, // 흙 뚫고 솟음: 낮은 우르릉 + 퍽
+  block:t => { tone(1400, t, .05, 'square', .22, AUD.sg, -500); tone(260, t, .09, 'triangle', .3, AUD.sg, -60); }, // 방패에 막힘: 쨍 + 둔탁
   bump:t => tone(520, t, .1, 'triangle', .3, AUD.sg, 200),
   coin:t => { tone(988, t, .05, 'square', .25, AUD.sg); tone(1319, t + .06, .12, 'square', .25, AUD.sg); },
   gift:t => arp([784, 988, 1175, 1568, 1976], t, .06, 'sine', .35, .16),
