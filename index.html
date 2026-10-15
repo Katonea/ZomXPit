@@ -144,7 +144,8 @@ const ENEMY = {
   priest: {name:'간호사 좀비',      r:20, hp:22, spd:45,  xp:5, ps:3, support:true, healEvery:3, healR:150, heal:.25},
   boar:   {name:'기어오는 좀비', r:18, hp:24, spd:70, xp:4, dmg:9, ps:3, charger:true, range:190, windup:.35, chargeSpd:640, rest:1.1}, // 가까이 오면 달려들어 물고 사라짐 (id는 옛 이름 boar 그대로)
   bomber: {name:'폭탄 조끼',    r:14, hp:14, spd:125, xp:4, dmg:22, ps:2, bomb:true},
-  mage:   {name:'화염방사 좀비',    r:20, hp:22, spd:45,  xp:6, ps:3, caster:true, castEvery:6, casts:1},
+  mage:   {name:'화염방사 좀비',    r:20, hp:22, spd:45,  xp:6, ps:3, caster:true, castEvery:5, jet:{len:520, w:46, dmg:9, warn:.8, t:.55}}, // 예고선 0.8초 → 일직선 화염 (선 안에 있으면 피해)
+  spitter:{name:'독 뿜는 좀비',     r:20, hp:22, spd:45,  xp:6, ps:3, caster:true, castEvery:6, casts:1, poison:true},           // 독 웅덩이를 뱉음 (공이 잠깐 들러붙음)
   // 2단계 좀비 (2026-10-14): runner 빠른 근접 / helmet 직격 helm번은 20%만 / fatty 죽으면 pop 반경에 독 폭발(예고) / convict 쇠공을 돌림(닿으면 피해) / syringe 주사기를 던짐(맞으면 둔화)
   runner: {name:'러너 좀비', r:17, hp:16, spd:95, xp:3, dmg:5, atkEvery:1.4, ps:3},
   helmet: {name:'안전모 좀비', r:20, hp:24, spd:50, xp:4, dmg:6, atkEvery:2, ps:3, helm:3},
@@ -201,8 +202,8 @@ const LEVELS = [
   {id:16, name:'고속도로',    hpMul:3.2, bossMul:1.7, dmgMul:1.45, waves:7, midAfter:3, boss:'archmage', mix:{runner:4, boar:3, bomber:2, archer:1}, forms:['row', 'wedge']},
   {id:17, name:'철거 현장',   hpMul:3.35, bossMul:1.8, dmgMul:1.35, waves:7, midAfter:3, boss:'digger',  mix:{helmet:3, fatty:2, bomber:2, convict:1, archer:1}, forms:['block', 'wall']},
   {id:18, name:'감옥 폭동',   hpMul:3.5, bossMul:2.2, dmgMul:1.5, waves:7, midAfter:3, boss:'paladin',  mix:{convict:3, shield:2, runner:2, syringe:1, knight:2}},
-  {id:19, name:'오염 지대',   hpMul:3.65, bossMul:.45, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{fatty:2, syringe:2, mage:1, helmet:2, runner:2, priest:1}},
-  {id:20, name:'폐허의 왕좌', hpMul:3.8, bossMul:1.2, dmgMul:1.4, waves:8, midAfter:4, boss:'paladin',  mix:{runner:2, helmet:2, fatty:1, convict:2, syringe:1, shield:1, boar:1, bomber:1, mage:1}},
+  {id:19, name:'오염 지대',   hpMul:3.65, bossMul:.45, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{fatty:2, syringe:2, mage:1, helmet:2, runner:2, priest:1, spitter:1}},
+  {id:20, name:'폐허의 왕좌', hpMul:3.8, bossMul:1.2, dmgMul:1.4, waves:8, midAfter:4, boss:'paladin',  mix:{runner:2, helmet:2, fatty:1, convict:2, syringe:1, shield:1, boar:1, bomber:1, mage:1, spitter:1}},
 ];
 const waveLen = w => w < 2 ? 20 : 25;                  // 웨이브 1~2는 20초, 이후 25초
 const waveOf = (L, w) => L.waveLen || waveLen(w);        // 성 침략 레벨은 웨이브가 짧다
@@ -477,6 +478,8 @@ const ZART = { // 적 종류 → 그림 함수 (f = 걸음 프레임 → 캔버�
     hat:({rect}) => { rect(.28, 0, .44, .16, '#f0f0f0'); rect(.28, .03, .44, .04, '#2a2a2a'); rect(.28, .1, .44, .04, '#2a2a2a'); }}),
   syringe:zbody({shirt:'#f0a0c0', shirtD:'#d880a0', pants:'#e888b0', hat:({rect}) => { rect(.28, .04, .44, .1, '#f0a0c0'); rect(.58, -.22, .12, .3, '#f4f4fa'); rect(.58, -.16, .12, .14, '#6ae04a'); rect(.55, .06, .18, .04, '#a8b0c0'); rect(.62, -.28, .04, .06, '#c8d0dc'); }}), // 주사기 간호사: 머리에 꽂힌 큰 주사기
   mage:zbody({shirt:'#b8b4a8', shirtD:'#8a867a', pants:'#8a867a', hat:(D, f) => { flames(D, f); D.rect(.3, .22, .4, .1, '#5a8ab8'); D.rect(.42, .34, .16, .08, '#3a3a44'); }}), // 화염방사: 머리에서 활활 + 방독면
+  spitter:zbody({shirt:'#7a9a5a', shirtD:'#5a7a3a', pants:'#4a5a3a', hat:({rect, circ, dot}, f) => { const p = f ? .01 : 0; circ(.5, -.04, .13 + p, '#6ad84a'); circ(.34, .03, .09, '#8ae04a'); circ(.66, .01, .1 - p, '#8ae04a'); dot(.48, -.08, '#d8ff9a'); dot(.66, -.02, '#d8ff9a');
+    rect(.44, .38, .12, .07 + (f ? .04 : 0), '#6ad84a'); }}), // 독 뿜는 좀비: 머리 위 독 거품 + 흘러내리는 침
   midboss:zpolice(({rect, circ, dot}) => { circ(.5, .24, .25, ZNV, true); rect(.24, .2, .52, .05, ZBD); rect(.3, .27, .4, .05, '#9ac8ff'); dot(.48, .02, ZBD, 2); }, 32), // 진압 대장: 금줄 헬멧
   captain:ztank32({front:({rect, dot}, f) => { const y = f ? .01 : 0; rect(.03, .32 + y, .48, .56, ZSB); rect(.06, .35 + y, .08, .5, ZSBL); rect(.03, .58 + y, .48, .03, ZNV); dot(.26, .66 + y, ZBD, 2); }}), // 탱크: 왼쪽 큰 방패 (판정 shieldSide와 같음)
   butcher:ztank32({front:({rect, dot}, f) => { rect(.3, .44, .4, .4, '#f0e8e0'); rect(.3, .44, .4, .05, '#c8c0b8'); dot(.4, .56, ZBL, 2); dot(.56, .66, ZBL, 2); dot(.46, .74, ZBL); // 피 묻은 앞치마 + 오른손 큰 식칼
@@ -1335,9 +1338,18 @@ function update(dt) {
       e.healT = d.healEvery; S.fx.push({k:'ring', x:e.x, y:e.y, r:d.healR, t:.4, T:.4, c:'#8bd65a'});
       for (const o of S.enemies) if (!o.dead && !ENEMY[o.type].boss && Math.hypot(o.x - e.x, o.y - e.y) < d.healR) o.hp = Math.min(o.max, o.hp + o.max*d.heal); // 보스는 회복 대상 아님
     }
-    if (d.castEvery && e.y >= Math.min(e.stopY, d.stopAt || 1e9) - 1 && (e.castT -= dt*m) <= 0) { // 결계: 들어온 공을 1초 묶음
+    if (d.jet && e.y >= e.stopY - 1) { // 화염방사: 예고선(방향 고정) → 일직선 화염
+      const j = e.jw;
+      if (j) { j.t -= dt*m;
+        if (j.ph === 'warn' && j.t <= 0) { j.ph = 'fire'; j.t = d.jet.t; e.bump = .3; sfx('launch', .1); }
+        else if (j.ph === 'fire') { const ux = Math.cos(j.a), uy = Math.sin(j.a), px0 = S.px - e.x, py0 = S.py - e.y, along = px0*ux + py0*uy, side = Math.abs(px0*uy - py0*ux);
+          if (!j.hit && along > 0 && along < d.jet.len && side < d.jet.w/2 + ch.r) { j.hit = true; hitPlayer(d.jet.dmg); }
+          if (j.t <= 0) e.jw = null; } }
+      else if ((e.castT -= dt*m) <= 0) { e.castT = d.castEvery*(.8 + rand()*.4); e.jw = {ph:'warn', t:d.jet.warn, a:Math.atan2(S.py - e.y, S.px - e.x), hit:false}; }
+    }
+    if (d.castEvery && !d.jet && e.y >= Math.min(e.stopY, d.stopAt || 1e9) - 1 && (e.castT -= dt*m) <= 0) { // 결계: 들어온 공을 1초 묶음
       e.castT = d.castEvery;
-      for (let i = 0; i < d.casts; i++) S.zones.push({x:S.fl + 60 + rand()*(S.fw - 120), y:PMIN - 80 + rand()*260, r:50, t:4, sx:e.x, sy:e.y + e.r*.3, age:0}); // 입에서 불길이 날아가 떨어진 자리에 웅덩이
+      for (let i = 0; i < d.casts; i++) S.zones.push({x:S.fl + 60 + rand()*(S.fw - 120), y:PMIN - 80 + rand()*260, r:50, t:4, sx:e.x, sy:e.y + e.r*.3, age:0, poison:!!d.poison}); // 입에서 불길이 날아가 떨어진 자리에 웅덩이
       e.bump = .3; sfx('launch', .2);
     }
     e.x = Math.max(S.fl + e.r, Math.min(S.fr - e.r, e.x));
@@ -1498,6 +1510,11 @@ function drawUnit(e) {
   if (e.cs === 'wind' || e.cs === 'dash') for (let k = 1; k <= 12; k++) px(e.x + e.cdx*k*30, e.y + e.cdy*k*30, k%2 ? 8 : 5, e.cs === 'wind' ? '#ff5a6a' : '#ffd34a'); // 돌진 예고선
   if (d.support) px(e.x, e.y - e.r - 6 + by, ps*2, '#8bd65a');
   if (d.caster) px(e.x, e.y - e.r - 6 + by, ps*2, '#7fd3f5');
+  if (e.jw) { const j = e.jw, ux = Math.cos(j.a), uy = Math.sin(j.a), L = d.jet.len;
+    if (j.ph === 'warn') { ctx.globalAlpha = .35 + .35*(Math.floor(S.t*12)%2); ctx.fillStyle = '#ff3a2a'; ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(j.a); ctx.fillRect(0, -d.jet.w/2, L, d.jet.w); ctx.restore(); ctx.globalAlpha = 1; // 예고: 깜빡이는 붉은 띠
+      for (let k = 1; k < 14; k++) px(e.x + ux*k*L/14, e.y + uy*k*L/14, 6, '#ffd34a'); }
+    else { const g = Math.min(1, (d.jet.t - j.t)/.12); for (let k = 0; k < 26; k++) { const q = k/26*L*g, f = Math.sin(S.t*40 + k*1.7), w = d.jet.w*(.5 + .5*k/26); // 화염: 입에서 멀수록 굵어짐, 일렁임
+        const x = e.x + ux*q - uy*f*6, y = e.y + uy*q + ux*f*6; px(x, y, w + f*6, '#c8301a'); px(x, y, w*.7 + f*4, '#ff8a2a'); px(x, y, w*.35, '#ffe14a'); } } }
   if (d.barLen) { const [x1, y1, x2, y2] = barEnds(e, d); for (let k = 0; k <= 24; k++) { const f = Math.sin(S.t*22 + k*1.3), x = x1 + (x2 - x1)*k/24, y = y1 + (y2 - y1)*k/24; px(x, y, 18 + f*4, '#c8301a'); px(x, y - 2, 12 + f*3, '#ff8a2a'); px(x, y - 3, 5 + f*2, '#ffe14a'); } } // 회전 화염 줄기
   if (e.curseT > 0) px(e.x, e.y - e.r - 22, 8, FN.curse.color);
   if (e.hp < e.max && !d.boss) {
@@ -1516,14 +1533,14 @@ function drawWall(x0, w) { // 보드 밖 무너진 붉은 벽돌 벽 (군데군�
   const e = x0 === 0 ? w - 8 : x0; ctx.fillStyle = '#5a4636'; ctx.fillRect(e, TOP, 8, BOT - TOP);
   for (let y = TOP; y < BOT; y += 14) { ctx.fillStyle = (y/14)%3 ? '#8a6a4a' : '#7a3a2c'; ctx.fillRect(e + ((y/14)%2)*3, y, 5, 6); }
 }
-function drawDeck() { // 보드 아래 조이스틱 받침대: 양옆 벽과 이어지는 벽돌 담 + 위쪽 모래주머니 턱 (보드 밖이라 좀비·공·주인공이 못 들어옴)
-  const y0 = BOT + 8, h = SLOTY + 8 - y0;
-  ctx.fillStyle = '#24160f'; ctx.fillRect(0, y0, W, h);
-  for (let y = y0, row = 0; y < y0 + h; y += 24, row++) for (let x = -(row%2)*16; x < W; x += 32) {
-    const q = Math.abs(Math.sin(x*12.9898 + y*78.233)*43758.5453 % 1); if (q < .1) continue;
-    ctx.fillStyle = q < .3 ? '#40201a' : q < .6 ? '#552a20' : '#5e3024'; ctx.fillRect(x + 2, y + 2, 28, 20); ctx.fillStyle = 'rgba(255,200,170,.07)'; ctx.fillRect(x + 2, y + 2, 28, 3); }
-  ctx.fillStyle = 'rgba(10,4,20,.35)'; ctx.fillRect(0, y0, W, h); // 조이스틱이 잘 보이게 살짝 어둡게
-  for (let x = S.fl - 20, k = 0; x < S.fr + 20; x += 44, k++) { ctx.fillStyle = UI.ink; ctx.fillRect(x - 2, y0 - 12, 46, 22); ctx.fillStyle = k%2 ? '#b89a68' : '#a88a58'; ctx.fillRect(x, y0 - 10, 42, 18); ctx.fillStyle = '#d8c090'; ctx.fillRect(x + 4, y0 - 8, 34, 4); } // 모래주머니 턱
+function drawDeck() { // 보드 아래 조이스틱 받침대: 철망 울타리 + 기둥·가로대 + 해골 경고판 (4px 도트, 보드 밖이라 좀비·공·주인공이 못 들어옴)
+  const y0 = BOT + 8, h = SLOTY + 8 - y0, INK = UI.ink, G = 4, q = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x/G)*G, Math.round(y/G)*G, Math.max(G, Math.round(w/G)*G), Math.max(G, Math.round(hh/G)*G)); };
+  q(0, y0, W, h, '#120a18'); ctx.save(); ctx.beginPath(); ctx.rect(0, y0, W, h); ctx.clip(); ctx.strokeStyle = '#6a6e7a'; ctx.lineWidth = 4;
+  for (let x = -h; x < W + h; x += 28) { ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x + h, y0 + h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + h, y0); ctx.lineTo(x, y0 + h); ctx.stroke(); } ctx.restore(); // 마름모 철망
+  for (let x = 40; x < W; x += 160) { q(x, y0 - 8, 16, h + 8, INK); q(x + 4, y0 - 8, 8, h + 8, '#9aa0ac'); }                 // 기둥
+  q(0, y0, W, 8, '#9aa0ac'); q(0, y0, W, 4, INK);                                                                         // 위 가로대
+  q(W - 150, y0 + 30, 100, 64, INK); q(W - 146, y0 + 34, 92, 56, '#ffd23a'); q(W - 116, y0 + 44, 32, 24, '#f4f0e0'); q(W - 112, y0 + 52, 8, 8, INK); q(W - 96, y0 + 52, 8, 8, INK); q(W - 108, y0 + 68, 24, 8, '#f4f0e0'); // 해골 경고판
+  const g = ctx.createRadialGradient(W/2, y0 + h/2, 20, W/2, y0 + h/2, 200); g.addColorStop(0, 'rgba(10,4,20,.45)'); g.addColorStop(1, 'rgba(10,4,20,0)'); ctx.fillStyle = g; ctx.fillRect(0, y0, W, h); // 조이스틱 자리는 어둡게
 }
 function drawBoard() {
   ctx.drawImage(BG, 0, 0, W, H);
@@ -1531,9 +1548,10 @@ function drawBoard() {
   drawDeck();
   drawWall(0, S.fl); drawWall(S.fr, W - S.fr);
   for (const z of S.zones) { // 불붙은 기름 웅덩이 (화염방사 좀비): 공이 잠깐 들러붙음
-    if (z.sx != null && z.age < .45) { const k = z.age/.45; for (let j = 0; j < 10; j++) { const q = Math.max(0, k - j*.035), x = z.sx + (z.x - z.sx)*q, y = z.sy + (z.y - z.sy)*q - Math.sin(q*Math.PI)*40, f = Math.sin(S.t*30 + j); px(x, y, 18 - j + f*3, j%3 ? '#ff8a2a' : '#ffe14a'); px(x, y, 8 - j*.5, '#fff6c0'); } continue; } // 불길이 포물선으로 날아감
-    ctx.globalAlpha = Math.min(1, z.t)*.75; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, z.r*.62, 0, 0, TAU); ctx.fillStyle = '#2a2018'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(z.x - z.r*.2, z.y - z.r*.15, z.r*.45, z.r*.22, 0, 0, TAU); ctx.fillStyle = '#4a3a5a'; ctx.fill(); // 기름 무지개 광택
+    if (z.sx != null && z.age < .45) { const k = z.age/.45; for (let j = 0; j < 10; j++) { const q = Math.max(0, k - j*.035), x = z.sx + (z.x - z.sx)*q, y = z.sy + (z.y - z.sy)*q - Math.sin(q*Math.PI)*40, f = Math.sin(S.t*30 + j); px(x, y, 18 - j + f*3, z.poison ? (j%3 ? '#6ad84a' : '#b8ff6a') : j%3 ? '#ff8a2a' : '#ffe14a'); px(x, y, 8 - j*.5, z.poison ? '#e8ffc0' : '#fff6c0'); } continue; } // 침·불덩이가 포물선으로 날아감
+    ctx.globalAlpha = Math.min(1, z.t)*.75; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, z.r*.62, 0, 0, TAU); ctx.fillStyle = z.poison ? '#1e3418' : '#2a2018'; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(z.x - z.r*.2, z.y - z.r*.15, z.r*.45, z.r*.22, 0, 0, TAU); ctx.fillStyle = z.poison ? '#4a8a2a' : '#4a3a5a'; ctx.fill(); // 기름 무지개 광택 / 독 웅덩이 윤기
+    if (z.poison) { for (let k = 0; k < 6; k++) { const b = (S.t*1.5 + k*.37)%1, a = k*2.4; px(z.x + Math.cos(a)*z.r*.55, z.y + Math.sin(a)*z.r*.3 - b*14, 6 + (1 - b)*4, b < .8 ? '#8ae04a' : '#d8ff9a'); } ctx.globalAlpha = 1; continue; } // 독 거품
     for (let k = 0; k < 9; k++) { const a = k*2.4, f = Math.sin(S.t*14 + k*1.7), fx = z.x + Math.cos(a)*z.r*.7*((k%3 + 1)/3), fy = z.y + Math.sin(a)*z.r*.4*((k%3 + 1)/3);
       px(fx, fy - 6 - f*4, 10 + f*3, '#ff8a2a'); px(fx, fy - 10 - f*6, 5, '#ffe14a'); }
     ctx.globalAlpha = 1;
@@ -3108,6 +3126,7 @@ function selfTest() {
     S.fu.left = 1; freeItem(ro[0]); ok(S.items.cornucopia === 1 && !S.items.rattle && S.chambers.length === nc + 3 && S.mode === 'play', '아이템: 진화하면 한 칸으로 합쳐짐');
     S.items = {a:1, b:1, c:1, d:1}; for (const k of 'abcd') ITEM[k] = {v:[1, 1, 1]}; ok(itemRoll().every(o => o.kind !== 'new'), '아이템: 칸이 차면 새 아이템 없음'); for (const k of 'abcd') delete ITEM[k]; S.items = {};
     const quiet = () => { S.waveT = S.spawnT = S.eliteT = 1e9; }; // 웨이브 진행 멈춤
+    startLevel(1); quiet(); S.px = W/2; S.py = BOT - 100; S.inv = 0; { const mg = spawn('mage'); mg.x = W/2; mg.y = mg.stopY = S.py - 300; mg.castT = 0; mg.hp = mg.max = 1e9; const h0 = S.hp; for (let i = 0; i < 120*1.6; i++) { S.px = W/2; S.py = BOT - 100; update(STEP); } ok(S.hp < h0, '화염방사: 예고선 뒤 일직선 화염 피해'); }
     // 공 순환: 나가 있는 칸은 발사되지 않고, 바닥에 닿은 공도 회수된다
     startLevel(1); quiet(); const k = spawn('knight'); k.hp = k.max = 1e9;
     for (let i = 0; i < 60; i++) update(STEP);
