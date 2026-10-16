@@ -963,27 +963,73 @@ function freeUpgrade() { // 먹으면 게임이 멈추고 올릴 볼을 직접 �
 function ballCapsule() { // 볼 캡슐: 게임이 멈추고 룰렛이 내 볼 위를 돌다 멈춘 볼이 Lv+1 (1~4회, 자동)
   const n = wpick(RULE.upCount) + 1;
   if (!freeCand().length) { S.xp += n*.5*need(); toast('볼 캡슐! 모두 최대 Lv → 경험치'); checkLevel(); return; }
+  if (freeCand().length > 1) { bcBatch(n); S.mode = 'ballcap'; S.shake = 8; burst(S.px, S.py, '#ff9ac8', 40); return; } // 여러 개: 빠른 스캔 → 일괄 확정
   S.bc = {left:n, total:n, t:0, ph:'spin'}; bcRoll(); S.mode = 'ballcap'; S.shake = 8; burst(S.px, S.py, '#ff9ac8', 40);
 }
-const BC_SPIN = .85, BC_POP = .9; // 룰렛 도는 시간 / 결과 카드 보여 주는 시간
+function bcBatch(n) { // 강화 n회를 미리 뽑음 (최대 Lv 넘지 않게). 빛이 볼 위를 훑다가 당첨 볼에 차례로 멈추고, 다 멈추면 한꺼번에 Lv 오름
+  const add = S.balls.map(() => 0), locks = []; let xp = 0;
+  for (let k = 0; k < n; k++) { const c = S.balls.map((o, i) => i).filter(i => S.balls[i].lv + add[i] < RULE.maxLv); if (!c.length) { xp++; continue; }
+    const i = c[Math.floor(rand()*c.length)]; if (!add[i]) locks.push(i); add[i]++; }
+  const lockAt = locks.map((_, j) => BCB.scan + j*BCB.gap);
+  S.bc = {multi:true, total:n, t:0, ph:'scan', add, locks, lockAt, popAt:lockAt[lockAt.length - 1] + BCB.hold, xp, last:-1, lk:0, tapped:false};
+}
+const BCB = {scan:.4, gap:.12, hold:.15, step:22}; // 스캔 시간 / 당첨 볼 멈춤 간격 / 마지막 멈춤 뒤 터지기까지 / 스캔 속도(칸/초)
+const bcbPos = i => { const n = S.balls.length, row = Math.floor(i/4), inRow = Math.min(4, n - row*4); return [360 + (i%4 - (inRow - 1)/2)*150, 520 + row*190]; };
+const BC_SPIN = .85, BC_POP = .9, BC_CHARGE = .6; // 룰렛 도는 시간 / 결과 카드 보여 주는 시간 / 하나뿐인 볼 충전 시간
 function bcRoll() { const c = S.balls, cand = freeCand(), tg = cand[Math.floor(rand()*cand.length)], ti = c.indexOf(tg), sl = TAU/c.length; // 원판: 두 바퀴 이상 돌다 목표 칸이 위 화살표에 멈춤
   const a0 = S.bc.a1 ?? 0, base = -Math.PI/2 - (ti + .5)*sl, a1 = base + TAU*Math.ceil((a0 + TAU*2 - base)/TAU);
-  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1, solo:cand.length === 1});
-  if (cand.length === 1) Object.assign(S.bc, {a0:a1, t:BC_SPIN, last:0}); } // 올릴 볼이 하나뿐이면 룰렛 없이 바로 강화 연출 (원판도 안 그림)
+  Object.assign(S.bc, {t:0, ph:'spin', tg, a0, a1, last:-1, solo:cand.length === 1, tapped:false});
+  if (cand.length === 1) { Object.assign(S.bc, {a0:a1, t:BC_SPIN - BC_CHARGE, last:0}); sfx('launch'); } } // 올릴 볼이 하나뿐이면 룰렛 없이 충전 → 폭발 (원판 안 그림)
 const bcAng = () => { const b = S.bc, k = Math.min(1, b.t/BC_SPIN); return b.ph === 'spin' ? b.a1 - (b.a1 - b.a0)*(1 - k)**3 : b.a1; };
 function bcIdx() { const n = S.balls.length, sl = TAU/n; return Math.floor((((-Math.PI/2 - bcAng())%TAU + TAU)%TAU)/sl)%n; } // 화살표 아래 칸
 function ballCapStep(dt) { const b = S.bc; b.t += dt;
+  if (b.multi) {
+    if (b.ph === 'scan') { const i = Math.floor(b.t*BCB.step)%S.balls.length; if (b.t < b.popAt - BCB.hold && i !== b.last) { b.last = i; sfx('click', .02); tick(10); }
+      while (b.lk < b.lockAt.length && b.t >= b.lockAt[b.lk]) { b.lk++; sfx('reel'); buzz(20); }
+      if (b.t >= b.popAt) { b.ph = 'pop'; b.t = 0; b.lk = b.locks.length; b.lv0 = S.balls.map(o => o.lv); S.balls.forEach((o, i) => o.lv += b.add[i]); sfx('lvup'); buzz([25, 30, 45]); S.shake = 6; } }
+    else if (b.ph === 'pop' && b.tapped && b.t >= .4) { if (b.xp) S.xp += b.xp*.5*need(); S.bc = null; syncChambers(); S.mode = 'play'; tutDone('free'); checkLevel(); }
+    return; }
   if (b.ph === 'spin') { const i = bcIdx(); if (i !== b.last) { b.last = i; sfx('click', .02); tick(12); }
     if (b.t >= BC_SPIN) { b.ph = 'pop'; b.t = 0; b.at = S.balls.indexOf(b.tg); b.lv0 = b.tg.lv; b.tg.lv++; sfx('lvup'); buzz([25, 30, 45]); S.shake = 6; } }
-  else if (b.ph === 'pop' && b.t >= BC_POP) { if (--b.left > 0 && freeCand().length) bcRoll(); else { if (b.left > 0) S.xp += b.left*.5*need(); b.ph = 'end'; b.t = 0; } }
+  else if (b.ph === 'pop' && b.t >= BC_POP && (!b.solo || b.tapped)) { if (--b.left > 0 && freeCand().length) bcRoll(); else { if (b.left > 0) S.xp += b.left*.5*need(); b.ph = 'end'; b.t = 0; } } // 하나뿐인 볼 강화는 터치해야 넘어감
   else if (b.ph === 'end' && b.t >= .2) { S.bc = null; syncChambers(); S.mode = 'play'; tutDone('free'); checkLevel(); }
 }
-function ballCapUI() { // 볼 캡슐: 원형 룰렛(내 볼 칸) → 멈춘 칸 번쩍 + 아래 결과 카드(볼 크게·Lv 변화·효과)
+function ballCapBatchUI() { // 일괄 강화: 볼 칸 위를 흰 테두리가 훑다가 당첨 볼에 금테로 고정 → 한꺼번에 터지며 +n, 아래 결과 카드
+  const b = S.bc, T = performance.now()/1000, n = S.balls.length, pop = b.ph === 'pop', k = pop ? b.t : -1, scanI = !pop && b.t < b.popAt - BCB.hold ? Math.floor(b.t*BCB.step)%n : -1;
+  ctx.fillStyle = 'rgba(20,8,50,.9)'; ctx.fillRect(0, 0, W, H); if (pop) uiRays(560, .12, T);
+  uiRibbon(360, 200, 360, '볼 캡슐!', 'pink', 46); uiLabel('강화 ' + b.total + '회', 360, 290, 24, '#ffd8ec', 'center', 900);
+  S.balls.forEach((o, i) => { const [x, y] = bcbPos(i), up = b.add[i], li = b.locks.indexOf(i), locked = li >= 0 && li < b.lk, mx = !up && o.lv >= RULE.maxLv;
+    if (scanI === i) { pxBox(x - 62, y - 62, 124, 124, '#ffffff', {shade:null, light:null}); ctx.fillStyle = '#1a0c38'; ctx.fillRect(x - 54, y - 54, 108, 108); }
+    if (locked) { pxBox(x - 66, y - 66, 132, 132, '#ffd23a', {shade:'#c8901a', light:'#fff6a0', sh:2}); ctx.fillStyle = '#2a1a4a'; ctx.fillRect(x - 56, y - 56, 112, 112); }
+    if (pop && up) { for (let r = 0; r < 2; r++) { const rr = k*500 - r*70; if (rr > 0 && rr < 240) { ctx.globalAlpha = 1 - rr/240; ctx.lineWidth = 7; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; } } uiBallGlow(x, y, 64); }
+    ctx.globalAlpha = (pop || b.lk >= b.locks.length) && !up ? .4 : mx ? .5 : 1; uiBall(x, y, 44*(pop && up ? 1 + .25*Math.max(0, 1 - k*4) : 1), o.fns, pop && up ? T*2 : 0); ctx.globalAlpha = 1;
+    const lvNow = o.lv, lv0 = pop ? b.lv0[i] : o.lv; for (let p = 0; p < RULE.maxLv; p++) px(x - 40 + p*20, y + 84, 12, p < lvNow ? (pop && p >= lv0 ? '#fff' : '#ffd23a') : '#5a4a7a'); // Lv 칸 (새로 켜진 칸은 흰색)
+    if (pop && up) { const e = 1 - (1 - Math.min(1, k/.25))**3; ctx.save(); ctx.translate(x, y - 84 - 30*e); ctx.globalAlpha = Math.min(1, k*5); pxBox(-38, -24, 76, 44, '#ff6ab0', {shade:'#c83a7a', light:'#ffb0d8', sh:2}); uiTxt('+' + up, 0, 10, 28); ctx.restore(); ctx.globalAlpha = 1; } });
+  if (pop && k < .1) { ctx.globalAlpha = 1 - k/.1; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  if (!pop) { uiTxt('두구두구…', W/2, 1110, 26, '#e6dcff'); return; }
+  const ups = b.locks, ry = 520 + Math.ceil(n/4)*190 - 40, rh = 70 + ups.length*44 + (b.xp ? 34 : 0), e = 1 - (1 - Math.min(1, Math.max(0, (k - .15)/.3)))**3; // 결과 카드
+  ctx.save(); ctx.globalAlpha = e; ctx.translate(0, (1 - e)*50); pxBox(80, ry, 560, rh, '#fff4d6', {drop:'rgba(10,2,30,.55)', shade:'#e0c8a0', sh:2});
+  uiLabel('강화 결과', 360, ry + 40, 24, UI.ink, 'center', 900);
+  ups.forEach((i, j) => { const o = S.balls[i], yy = ry + 80 + j*44; uiBall(140, yy - 8, 18, o.fns); fitLabel(ballName(o) + '  Lv' + b.lv0[i] + ' → Lv' + o.lv, 172, yy, 22, 440, '#e8731a', 'left', 900); });
+  if (b.xp) uiLabel('남은 ' + b.xp + '회는 경험치로', 360, ry + rh - 20, 18, '#6a5a8a', 'center', 700);
+  ctx.restore(); ctx.globalAlpha = 1;
+  if (k > .4) uiTxt('화면을 눌러 닫기', W/2, 1130, 24, '#e6dcff');
+}
+function ballCapUI() {
+  if (S.bc.multi) { ballCapBatchUI(); return; } // 볼 캡슐: 원형 룰렛(내 볼 칸) → 멈춘 칸 번쩍 + 아래 결과 카드(볼 크게·Lv 변화·효과)
   const b = S.bc, T = performance.now()/1000, n = S.balls.length, cx = 360, cy = 560, R = 230, sl = TAU/n, ang = bcAng(), cur = bcIdx(), pop = b.ph !== 'spin';
   ctx.fillStyle = 'rgba(20,8,50,.88)'; ctx.fillRect(0, 0, W, H); uiRays(cy, .1, T);
   uiRibbon(360, 200, 360, '볼 캡슐!', 'pink', 46);
   for (let i = 0; i < b.total; i++) uiStar(360 + (i - (b.total - 1)/2)*58, 270, 21, i < b.left ? '#ff9ac8' : '#6a5a90');
-  if (b.solo) { const o = S.balls[b.at ?? S.balls.indexOf(b.tg)], s = 1 + Math.max(0, .35 - b.t)*1.2; uiBallGlow(cx, cy, 120*s); uiBall(cx, cy, 110*s, o.fns, T*3); } // 한 개뿐: 원판 없이 그 볼만 크게
+  if (b.solo) { const o = b.tg;                                                           // 한 개뿐: 원판 없이 충전 → 폭발 (시안 B)
+    if (!pop) { const ch = Math.min(1, Math.max(0, (b.t - (BC_SPIN - BC_CHARGE))/BC_CHARGE));
+      for (let k = 0; k < 28; k++) { const a = k*.9 + T*5, r = 280*(1 - ((ch*1.3 + k/28)%1)); px(cx + Math.cos(a)*r, cy + Math.sin(a)*r, 9, k%2 ? '#ff9ac8' : '#ffd23a'); } // 빨려 드는 빛 알갱이
+      ctx.lineWidth = 16; ctx.strokeStyle = '#3a2a5a'; ctx.beginPath(); ctx.arc(cx, cy, 150, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(cx, cy, 150, -Math.PI/2, -Math.PI/2 + TAU*ch); ctx.stroke(); // 차오르는 링
+      uiBall(cx, cy, 100 - 28*ch + Math.sin(T*40)*2*ch, o.fns, T*ch*8); }
+    else { const k = b.t; uiRays(cy, .25, T); for (let r = 0; r < 3; r++) { const rr = k*700 - r*90; if (rr > 0 && rr < 520) { ctx.globalAlpha = 1 - rr/520; ctx.lineWidth = 10; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; } } // 충격파
+      if (k < .12) { ctx.globalAlpha = 1 - k/.12; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+      uiBallGlow(cx, cy, 140); uiBall(cx, cy, 110*(1 + .3*Math.max(0, 1 - k*4)), o.fns, T*2);
+      const d = 1 - (1 - Math.min(1, k/.3))**3; ctx.save(); ctx.translate(0, -220*(1 - d)); uiRibbon(360, 350, 380, 'LEVEL UP!', 'pink', 48); ctx.restore(); } }
   else for (let i = 0; i < n; i++) { const a = ang + i*sl, o = S.balls[i], mx = o.lv >= RULE.maxLv; // 칸: 최대 Lv 볼은 어둡게
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a, a + sl); ctx.closePath(); ctx.fillStyle = pop && i === cur && Math.floor(T*10)%2 ? '#ffd23a' : mx ? '#3a2a5a' : i%2 ? '#6a3ac8' : '#8a55e8'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = UI.ink; ctx.stroke();
     const am = a + sl/2; ctx.globalAlpha = mx ? .45 : 1; uiBall(cx + Math.cos(am)*R*.66, cy + Math.sin(am)*R*.66, Math.min(36, R*sl*.24), o.fns); ctx.globalAlpha = 1; }
@@ -993,7 +1039,7 @@ function ballCapUI() { // 볼 캡슐: 원형 룰렛(내 볼 칸) → 멈춘 칸 
   ctx.beginPath(); ctx.arc(cx, cy, 32, 0, TAU); ctx.fillStyle = '#ffd23a'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = UI.ink; ctx.stroke();
   ctx.fillStyle = UI.ink; ctx.beginPath(); ctx.moveTo(cx, cy - R + 30); ctx.lineTo(cx - 28, cy - R - 32); ctx.lineTo(cx + 28, cy - R - 32); ctx.fill(); // 위 화살표
   ctx.fillStyle = '#ff3a5a'; ctx.beginPath(); ctx.moveTo(cx, cy - R + 18); ctx.lineTo(cx - 19, cy - R - 25); ctx.lineTo(cx + 19, cy - R - 25); ctx.fill(); }
-  if (!pop) { uiTxt('두구두구…', W/2, 880, 28, '#e6dcff'); return; }
+  if (!pop) { uiTxt(b.solo ? '충전 중…' : '두구두구…', W/2, 880, 28, '#e6dcff'); return; }
   const o = S.balls[b.at], k = Math.min(1, b.t/.2), e = 1 - (1 - k)**3; // 결과 카드
   ctx.save(); ctx.translate(360, 940); ctx.scale(.7 + .3*e, .7 + .3*e); ctx.globalAlpha = k;
   pxBox(-320, -130, 640, 260, '#fff4d6', {drop:'rgba(10,2,30,.55)', shade:'#e0c8a0', sh:2});
@@ -1002,7 +1048,7 @@ function ballCapUI() { // 볼 캡슐: 원형 룰렛(내 볼 칸) → 멈춘 칸 
   fitLabel(ballName(o), -130, -78, 30, 420, UI.ink, 'left', 900); uiLabel('Lv' + b.lv0 + '  →  Lv' + o.lv, -130, -34, 34, '#e8731a', 'left', 900);
   o.fns.slice(0, 3).forEach((f, j) => fitLabel(FN[f].name + ': ' + FN[f].d(fv(f, effLv(o))), -130, 6 + j*28, 20, 430, '#6a5a8a', 'left', 700));
   ctx.restore(); ctx.globalAlpha = 1;
-  uiTxt('화면을 누르면 빨리 넘어가요', W/2, 1110, 22, '#e6dcff');
+  uiTxt(b.solo ? (b.t > .4 ? '화면을 눌러 닫기' : '') : '화면을 누르면 빨리 넘어가요', W/2, 1110, 22, '#e6dcff');
   if (b.t < .3) for (let q = 0; q < 12; q++) { const a = q/12*TAU, r = 40 + b.t*420; px(cx + Math.cos(a)*r, cy - R + Math.sin(a)*r*.5, 10, q%2 ? '#ffd23a' : '#ff9ac8'); } // 당첨 불꽃
 }
 // 장비 캡슐: 장비 3개 중 1개
@@ -1245,6 +1291,7 @@ function launch(c) {
   if (EV('cornucopia') && !c.src && rand() < .15) babyShot(S.px, S.py, a + (rand() - .5)*.3, p.dmg);
   S.shots.push({...p, ...it, x:S.px + Math.cos(a)*26, y:S.py + Math.sin(a)*26, vx:Math.cos(a)*ballSpd()*p.spdMul, vy:Math.sin(a)*ballSpd()*p.spdMul,
     chamber:c, hit:new Map(), life:1e9, baby:false, bounced:false, ret:false, held:0, zonesHit:new Set(), rot:rand()*TAU, w:(rand() < .5 ? -1 : 1)*(9 + rand()*7)});
+  sfx('shot', .06);
 }
 function recover(s) { s.gone = true; if (s.chamber) s.chamber.out = false; }
 
@@ -1724,7 +1771,7 @@ function drawTut() {
   if (m === 'levelup' && !tutSeen('card')) tutHint('카드를 하나 골라 볼을 강화하거나 새 볼을 얻어요', null, null, W/2, 1210);
   if (m === 'levelup' && !tutSeen('fuse') && S.choices && S.choices.some(c => c.type === 'fuse' || c.type === 'evo')) tutHint('Lv5 볼 두 개를 합치면 기능이 합쳐져요. 짝이 맞으면 진화!', null, null, W/2, 1210);
   if (m === 'freeup' && !tutSeen('free')) tutHint(S.fu && S.fu.gear ? '장비 캡슐! 장비를 하나 골라요. 장비는 아래 칸을 하나 써요' : '무료 강화! 볼을 올리거나 아이템을 골라요', null, null, W/2, 1210);
-  if (m === 'ballcap' && !tutSeen('free')) tutHint(S.bc && S.bc.solo ? '볼 캡슐! 내 볼이 자동으로 강해져요' : '볼 캡슐! 룰렛이 멈춘 볼이 자동으로 강해져요', null, null, W/2, 1210);
+  if (m === 'ballcap' && !tutSeen('free')) tutHint(S.bc && S.bc.solo ? '볼 캡슐! 내 볼이 자동으로 강해져요' : '볼 캡슐! 빛이 멈춘 볼들이 한꺼번에 강해져요', null, null, W/2, 1210);
   if (m === 'lobby' && !LOBBY.pop) { // 3단계: 로비 안내 (한 번에 하나)
     if (META.maxLevel >= 1 && !tutSeen('pb')) { const [x, y] = tabTarget('hub'); tutHint('첫 클리어 보상으로 핀볼을 얻었어요! 핀볼 기계로 가 봐요', x, y, W/2, 800); }
     else if (tutSeen('pb') && !tutSeen('equip')) { const [x, y] = tabTarget('balls'); tutHint('얻은 볼을 장착해요. 장착한 볼만 전투에 나와요', x, y, W/2, 800); }
@@ -1794,7 +1841,7 @@ function drawMain() {
     else if (f.k === 'flash') { ctx.fillStyle = 'rgba(255,60,60,.25)'; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = 1;
   }
-  for (const s of S.shots) { ctx.globalAlpha = s.ret ? .5 : 1; drawBall(s.x, s.y, s.r, s.fns, s.rot || 0); ctx.globalAlpha = 1; }
+  for (const s of S.shots) { ctx.globalAlpha = s.ret ? .5 : 1; drawBall(s.x, s.y, s.r, s.fns, (s.rot || 0)*.35); ctx.globalAlpha = 1; } // 그림 회전은 물리 회전의 0.35배 (초당 4바퀴면 16단계 도트가 떨림으로만 보여서)
   // 플레이어
   ctx.globalAlpha = S.inv > 0 && Math.floor(S.t*20)%2 ? .4 : 1;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(Math.round(S.px - 18), Math.round(S.py + 22), 36, 6);
@@ -3019,6 +3066,7 @@ const SFX = {
   coin:t => { tone(988, t, .05, 'square', .25, AUD.sg); tone(1319, t + .06, .12, 'square', .25, AUD.sg); },
   gift:t => arp([784, 988, 1175, 1568, 1976], t, .06, 'sine', .35, .16),
   launch:t => tone(180, t, .22, 'sawtooth', .3, AUD.sg, 700),
+  shot:t => { tone(760, t, .06, 'square', .14, AUD.sg, -420); tone(150, t, .05, 'triangle', .2, AUD.sg, -60); }, // 볼 발사: 짧은 퓽 + 톡
   fuse:t => { tone(200, t, .8, 'sawtooth', .25, AUD.sg, 900); arp([523, 659, 784], t + .85, 0, 'triangle', .3, .5); },
   boss:t => { tone(110, t, .6, 'sawtooth', .45, AUD.sg, -30); tone(82, t + .25, .6, 'sawtooth', .45, AUD.sg, -20); },
   win:t => arp([523, 659, 784, 1047, 1319], t, .1, 'square', .3, .2),
@@ -3214,7 +3262,8 @@ function tap(x, y) {
   if (S.mode === 'result' || S.mode === 'verdict') { const b = buttons().find(hit); if (b && !b.off) b.act(); return true; }
   if (S.mode === 'levelup') { if (cardAge() > .3) S.choices.forEach((c, i) => { if (hit(CARD(i))) pick(c); }); return true; } // 뜬 직후 0.3초는 오터치 방지
   if (S.mode === 'fusion') { if (S.fz.t > 2.7) fusionDone(); return true; }
-  if (S.mode === 'ballcap') { const b = S.bc; if (b.ph === 'spin') b.t = Math.max(b.t, BC_SPIN - .05); else b.t += 1; return true; } // 누르면 빨리 넘김
+  if (S.mode === 'ballcap' && S.bc.multi) { const b = S.bc; if (b.ph === 'scan') b.t = Math.max(b.t, b.popAt); else if (b.t > .4) b.tapped = true; return true; } // 일괄: 누르면 바로 확정, 확정 뒤엔 눌러서 닫기
+  if (S.mode === 'ballcap') { const b = S.bc; if (b.ph === 'spin') b.t = Math.max(b.t, BC_SPIN - .05); else if (b.solo) { if (b.t > .4) { b.tapped = true; b.t = Math.max(b.t, BC_POP); } } else b.t += 1; return true; } // 누르면 빨리 넘김 (하나뿐이면 0.4초 뒤부터 눌러서 닫기)
   if (S.mode === 'freeup') { const c = freeBalls(), k = c.findIndex((b, i) => hit(FREE_TILE(i))), j = S.fu.items.findIndex((id, i) => hit(ITEM_TILE(i))); if (S.fu.t > .3) { if (k >= 0) freePick(c[k]); else if (j >= 0) freeItem(S.fu.items[j]); } return true; }
   if (S.mode === 'play' && hit(GEAR)) { openSettings(); return true; }
   if (S.mode === 'play' && hit(AIM_BTN)) { if (ctrlMode() === 'tap' && S.tgt) S.tgt = null; else { S.autoAim = !S.autoAim; S.aimDir = null; } return true; }
@@ -3315,7 +3364,7 @@ function selfTest() {
       ok(S.balls[0].lv === 5 && S.balls[1].lv === 5 && S.balls[2].lv >= 2, '무료 강화 선택 반영');
     }
     reset(); S.balls = [b(['fire'], 5), b(['frost'], 2), b(['poison'], 1)]; S.mode = 'play'; ballCapsule(); ok(S.mode === 'ballcap', '볼 캡슐: 룰렛 화면');
-    for (let i = 0; i < 200 && S.mode === 'ballcap'; i++) ballCapStep(.5); ok(S.mode === 'play' && S.balls[0].lv === 5 && S.balls[1].lv + S.balls[2].lv > 3, '볼 캡슐: Lv5 제외하고 자동 강화');
+    for (let i = 0; i < 200 && S.mode === 'ballcap'; i++) { S.bc.tapped = true; ballCapStep(.5); } ok(S.mode === 'play' && S.balls[0].lv === 5 && S.balls[1].lv + S.balls[2].lv > 3, '볼 캡슐: Lv5 제외하고 자동 강화');
     reset(); startLevel(1); gearCapsule(); ok(S.mode === 'freeup' && S.fu.gear && freeBalls().length === 0 && S.fu.items.length > 0, '장비 캡슐: 장비만 고름');
     reset(); startLevel(1); const sp0 = S.ch.spd, nc = S.chambers.length; S.fu = {left:3, total:3, t:1, items:[]}; S.mode = 'freeup';
     freeItem({kind:'new', id:'feet'}); ok(S.ch.spd > sp0 && S.items.feet === 1, '아이템: 날쌘 발');
@@ -3528,7 +3577,7 @@ function bot(seed, levelId = 1, maxT = 600, meta = {}) { // meta: 성장 상태 
   let bossAt = null;
   while (S.t < maxT && (S.mode === 'play' || S.mode === 'levelup' || S.mode === 'freeup' || S.mode === 'fusion' || S.mode === 'ballcap')) {
     if (S.mode === 'fusion') { fusionDone(); continue; }
-    if (S.mode === 'ballcap') { ballCapStep(.5); continue; }
+    if (S.mode === 'ballcap') { S.bc.tapped = true; ballCapStep(.5); continue; } // 봇: 터치 대기 없이 넘김
     if (S.mode === 'freeup') { const c = freeCand(); if (c.length) freePick(c.sort((a, b) => b.lv - a.lv)[0]); else freeItem(S.fu.items[0]); continue; } // 봇: 가장 높은 볼부터 몰아서 강화
     if (S.mode === 'levelup') { pick(S.choices.slice().sort((a, b) => score(b) - score(a))[0]); continue; }
     const ty = BOT - 140;
