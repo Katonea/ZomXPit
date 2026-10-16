@@ -1246,7 +1246,7 @@ function onHit(s, e) {
       for (let i = 0; i < Math.round(v.n) + (s.evo === 'mirror' ? 2 : 0); i++) {
         const a = -Math.PI/2 + (rand() - .5)*2.4;
         S.shots.push({fns, E:s.E, dmg:d*.4, r:6, pierce:0, x:s.x, y:s.y, vx:Math.cos(a)*ballSpd(), vy:Math.sin(a)*ballSpd(),
-          chamber:null, hit:new Map([[e.id, S.t]]), life:3, baby:true, zonesHit:new Set()});
+          chamber:null, hit:new Map([[e.id, S.t]]), life:3, baby:true, zonesHit:new Set(), look:s.fns, rot:rand()*TAU, w:(rand() < .5 ? -1 : 1)*(9 + rand()*7)}); // look = 본체 볼 그림 그대로 작게 (분열로 나온 공임을 보이게)
       }
     }
   }
@@ -1842,7 +1842,7 @@ function drawMain() {
     else if (f.k === 'flash') { ctx.fillStyle = 'rgba(255,60,60,.25)'; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = 1;
   }
-  for (const s of S.shots) { ctx.globalAlpha = s.ret ? .5 : 1; drawBall(s.x, s.y, s.r, s.fns, (s.rot || 0)*.35); ctx.globalAlpha = 1; } // 그림 회전은 물리 회전의 0.35배 (초당 4바퀴면 16단계 도트가 떨림으로만 보여서)
+  for (const s of S.shots) { ctx.globalAlpha = s.ret ? .5 : 1; drawBall(s.x, s.y, s.r, s.look || s.fns, (s.rot || 0)*.35); ctx.globalAlpha = 1; } // 그림 회전은 물리 회전의 0.35배 (초당 4바퀴면 16단계 도트가 떨림으로만 보여서)
   // 플레이어
   ctx.globalAlpha = S.inv > 0 && Math.floor(S.t*20)%2 ? .4 : 1;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(Math.round(S.px - 18), Math.round(S.py + 22), 36, 6);
