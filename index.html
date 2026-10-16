@@ -87,8 +87,8 @@ const evoOf = (a, b) => a.fns.length === 1 && b.fns.length === 1 && a.lv === RUL
 // ---------- 데이터: 캐릭터 (DESIGN 9장) ----------
 // 기본 능력치는 공통(공격 10, HP 120, 방어 10, 이동 228 (구 380의 60%)). 캐릭터마다 시작 볼과 능력이 다름. 플레이어 레벨·장착 볼은 buildChar에서 더해진다
 const CHAR = {
-  hero:{name:'소녀', start:[['bomb']], catchR:26, desc:'돌아오는 공 받는 범위 +30%. 시작 캐릭터'},
-  slime:{name:'소방관', start:[['split']], hpMul:1.25, spdMul:.9, desc:'최대 HP +25%, 이동속도 -10%'},
+  hero:{name:'소녀', start:[['split']], catchR:26, desc:'돌아오는 공 받는 범위 +30%. 시작 캐릭터'},
+  slime:{name:'소방관', start:[['frost']], hpMul:1.25, spdMul:.9, desc:'최대 HP +25%, 이동속도 -10%'},
   mushroom:{name:'과학자', start:[['poison']], statusMul:1.3, desc:'상태이상 지속시간 +30%'},
   bat:{name:'펑크', start:[['homing']], ballMul:1.15, vampMul:2, desc:'공 속도 +15%, 흡혈 효과 2배'},
   mimic:{name:'해커', start:'random2', upMul:1.5, hpMul:.85, desc:'공짜 강화 드롭률 +50%, 최대 HP -15%'},
@@ -219,8 +219,8 @@ const waveOf = (L, w) => L.waveLen || waveLen(w);        // 성 침략 레벨은
 const spawnEvery = w => Math.max(.35, 1.15 - .12*w);   // 웨이브가 지날수록 촘촘
 const reward = (L, first) => first ? 20 + 2*L : 8 + L; // 핀볼 (DESIGN 5장)
 const RULE = {maxLv:5, maxFns:4, slots:8, ballSpeed:650, returnSpeed:1100, crit:.05,
-  itemSlots:4, upDrop:.01, mobHp:1/7.5, spawnMul:9.4, mobXp:1/12, upCount:[60, 25, 10, 5], magnet:0, eliteEvery:25, bossDelay:2, formGap:1.2, bigPer:7, // bigPer = 대형 몇 마리당 큰 좀비 1마리 (정예와 같은 크기·체력, 강화 확정 드롭 없음)
-  xpBase:6, xpPer:3, hpGrow:75, arrowCap:5, chargeCap:2, guardPass:0}; // 필요 경험치 = xpBase + xpPer × 레벨. arrowCap = 화면 안 궁수 화살 최대, chargeCap = 동시에 돌진(예고 포함)하는 멧돼지 최대 (몬스터가 6배라 위협은 상한으로 묶음), guardPass = 방패병이 앞에서 막아도 통과하는 피해 비율
+  itemSlots:4, upDrop:.005, mobHp:1/7.5, spawnMul:9.4, mobXp:1/12, upCount:[60, 25, 10, 5], magnet:0, eliteEvery:25, bossDelay:2, formGap:1.2, bigPer:7, // bigPer = 대형 몇 마리당 큰 좀비 1마리 (정예와 같은 크기·체력, 강화 확정 드롭 없음)
+  xpBase:6, xpPer:3, hpGrow:75, meleeR:34, engageR:110, waveDense:.18, arrowCap:5, chargeCap:2, guardPass:0}; // meleeR = 근접 좀비 공격 사거리(몸 테두리 사이 거리), engageR = 이 거리 안이면 대형에서 빠져나와 달려듦, waveDense = 웨이브마다 생성량 +18%. 필요 경험치 = xpBase + xpPer × 레벨. arrowCap = 화면 안 궁수 화살 최대, chargeCap = 동시에 돌진(예고 포함)하는 멧돼지 최대 (몬스터가 6배라 위협은 상한으로 묶음), guardPass = 방패병이 앞에서 막아도 통과하는 피해 비율
 
 // ---------- 데이터: 성 침략 (DESIGN 17장) ----------
 // 다른 플레이어(지금은 가상 봇)의 성을 침략한다. 일반 몬스터 웨이브 + 중간 보스 없음 + 보스 = 상대 성. 1분 제한
@@ -1325,8 +1325,8 @@ function updateWaves(dt) {
     if ((S.waveT -= dt) <= 0) {
       if (++S.wave >= L.waves) S.wavesDone = true; else { S.waveT = waveOf(L, S.wave); toast('웨이브 ' + (S.wave + 1) + ' / ' + L.waves); }
     }
-    if ((S.spawnT -= dt) <= 0 && S.enemies.filter(o => o.y < TOP).length > 40) S.spawnT = .3; // 생성 대기: 화면 밖 대기열이 차 있으면 잠깐 미룸
-    else if (S.spawnT <= 0) S.spawnT = spawnFormation()*spawnEvery(S.wave)*RULE.formGap/RULE.spawnMul; // 대형 크기만큼 다음 대형까지 간격 (3배 촘촘)
+    if ((S.spawnT -= dt) <= 0 && S.enemies.filter(o => o.y < TOP).length > 40*S.fw/FIELD.startW) S.spawnT = .3; // 생성 대기: 화면 밖 대기열이 차 있으면 잠깐 미룸
+    else if (S.spawnT <= 0) S.spawnT = spawnFormation()*spawnEvery(S.wave)*RULE.formGap/RULE.spawnMul/(S.fw/FIELD.startW)/(1 + RULE.waveDense*S.wave); // 대형 크기만큼 다음 대형까지 간격. 보드가 넓어지면 그만큼, 웨이브마다 더 촘촘
     if ((S.eliteT -= dt) <= 0) { S.eliteT = RULE.eliteEvery; const types = Object.keys(L.mix); spawn(types[Math.floor(rand()*types.length)], true); }
   }
   if (L.midAfter != null && !S.mid && S.wave >= L.midAfter) { S.mid = bossEnter(L.mid || 'midboss'); }
@@ -1462,13 +1462,14 @@ function update(dt) {
           S.arrows.push({x:e.x, y:e.y, vx:Math.cos(a)*d.shotSpd, vy:Math.sin(a)*d.shotSpd, dmg:d.dmg, a, k:d.shot, slow:d.slowHit});
         }
       }
-    } else if (e.y < PMIN - 40) {
+    } else if (e.y < PMIN - 40 && Math.hypot(S.px - e.x, S.py - e.y) > e.r + ch.r + RULE.engageR) { // 플레이어가 가까우면 대형에서 빠져나와 달려듦
       e.y += e.spd*m*dt; e.x += Math.sin(S.t*1.5 + e.ph)*20*m*dt; // 대형이 한 덩어리로 밀고 내려옴 (같은 위상 = 모양 유지)
     } else { // 근접·돌진·폭탄: 플레이어에게 다가가 몸이 닿으면 공격
       e.chs = true;
-      const dx = S.px - e.x, dy = S.py - e.y, dist = Math.hypot(dx, dy) || 1, touch = dist < e.r + ch.r + 6;
+      const dx = S.px - e.x, dy = S.py - e.y, dist = Math.hypot(dx, dy) || 1, touch = dist < e.r + ch.r + 6, reach = dist < e.r + ch.r + RULE.meleeR;
+      if (!e.inR && reach) { e.inR = true; e.atkT = Math.min(e.atkT, .12); } else if (!reach) e.inR = false; // 사거리에 들어오면 곧바로 첫 공격
       if (d.charger) { chargeStep(e, d, dt, m, dx, dy, dist, touch); if (e.dead) continue; }
-      else if (!touch) { e.x += dx/dist*e.spd*m*dt; e.y += dy/dist*e.spd*m*dt; }
+      else if (d.bomb ? !touch : !reach) { e.x += dx/dist*e.spd*m*dt; e.y += dy/dist*e.spd*m*dt; }
       else if (d.bomb) { e.dead = true; hitPlayer(d.dmg); S.fx.push({k:'ring', x:e.x, y:e.y, r:60, t:.35, T:.35, c:'#ff8a3d'}); burst(e.x, e.y, '#ff8a3d', 16); continue; } // 폭탄병: 닿으면 자폭 (보상 없음)
       else if ((e.atkT -= dt*m) <= 0) { e.atkT = d.atkEvery; e.bump = .15; hitPlayer(d.dmg); }
       e.y = Math.min(e.y, BOT - e.r);
@@ -3460,11 +3461,11 @@ function selfTest() {
     reset(); ok(S.ch.atk === 10 + 2*PLV.atk && S.ch.hp === 120 + 2*PLV.hp && S.ch.def === 10 + 2*PLV.def, '레벨마다 기본 능력치 상승');
     META.plv = 1;
     ok(toggleDeck('fire') && toggleDeck('frost') && !toggleDeck('meteor'), '보유한 볼만 장착');
-    reset(); ok(S.balls.map(b => b.fns[0]).join() === 'bomb,fire,frost', '캐릭터 볼 + 장착 볼로 시작');
+    reset(); ok(S.balls.map(b => b.fns[0]).join() === 'split,fire,frost', '캐릭터 볼 + 장착 볼로 시작');
     for (const id of BALL_IDS) META.bag[id] = META.bag[id] || {n:0, lv:1};
     META.deck = []; BALL_IDS.forEach(id => toggleDeck(id)); ok(META.deck.length === DECK_MAX, '최대 8개 장착');
-    META.deck = ['bomb']; reset(); ok(S.balls.length === 1, '캐릭터 볼과 같은 볼은 한 번만');
-    META.deck = ['fire', 'frost', 'spark']; META.pick = ['spark', 'frost']; reset(); ok(S.balls.map(b => b.fns[0]).join() === 'bomb,spark,frost', '입장 때 고른 2개만 함께 시작');
+    META.bag.split = META.bag.split || {n:0, lv:1}; META.deck = ['split']; reset(); ok(S.balls.length === 1, '캐릭터 볼과 같은 볼은 한 번만');
+    META.deck = ['fire', 'frost', 'spark']; META.pick = ['spark', 'frost']; reset(); ok(S.balls.map(b => b.fns[0]).join() === 'split,spark,frost', '입장 때 고른 2개만 함께 시작');
     META.deck = ['fire']; META.pick = ['fire']; reset(); ok(S.balls.length === 2, '장착이 1개면 1개만');
     META.deck = ['fire', 'frost', 'spark']; META.pick = undefined; reset(); ok(S.balls.length === 3, '고른 적 없으면 장착 앞 2개');
     META.pick = ['fire', 'frost']; openPrep(() => {}); ok(S.mode === 'prep' && prepNeed() === 2 && META.pick.length === 2, '출전 볼 선택 화면');
@@ -3516,7 +3517,7 @@ function selfTest() {
     META.bag = freshMeta().bag;
     META.sel = 'golem'; reset(); ok(S.ch.normal === 2 && S.ch.normalSize === 1.5 && Math.abs(S.ch.def - 14) < 1e-9 && shotProps(null).r === 13.5 && S.chambers.length === 3, '돌돌: 방어 +40%, 일반 볼 2발 크기 +50%');
     META.sel = 'mimic'; reset(); ok(S.balls.length === 2 && S.balls[0].fns[0] !== S.balls[1].fns[0] && S.ch.hp === 102 && S.ch.upMul === 1.5, '덥썩: 무작위 볼 2종, HP -15%');
-    META.sel = 'slime'; reset(); ok(S.ch.hp === 150 && Math.abs(S.ch.spd - 205.2) < 1e-9 && S.balls[0].fns[0] === 'split', '말랑');
+    META.sel = 'slime'; reset(); ok(S.ch.hp === 150 && Math.abs(S.ch.spd - 205.2) < 1e-9 && S.balls[0].fns[0] === 'frost', '말랑');
     META.sel = 'mushroom'; reset(); const dm = {fns:['poison'], E:1}, en = spawn('knight'); applyStatus(en, dm, 10); ok(Math.abs(en.poison.t - 6.5) < 1e-9, '포실: 상태이상 +30%');
     META.sel = 'bat'; reset(); ok(S.ch.ballMul === 1.15 && Math.abs(ballSpd() - 650*1.15) < 1e-9 && Math.abs(fv('vamp', 1).pct - .02) < 1e-9, '팔락: 공 속도 +15%, 흡혈 2배');
     META.sel = 'hero'; ok(CHARS.length === 8 && CHARS.every(c => LOOK[c.id]), '캐릭터 8종 (모두 사람 그림 있음)');
