@@ -233,8 +233,8 @@ const RAID = {time:60, waves:3, waveLen:9, bossDelay:1.5, mobMul:[.6, .8, 1], bo
   // 침략 리그: 침략 점수(META.rp)로 정해짐. 이기면 +win, 지면 -lose (0 밑으로 안 내려감). 리그가 높을수록 상대 등급·탄 피해(dmg)·탄막 패턴(pats)이 세짐
   win:30, lose:15,
   // 아레나 = 리그. 처음 올라간 아레나의 balls가 해금돼 잭팟·처치 보상에서 나오기 시작 (낮을수록 직관적인 볼, 아레나마다 유니크 1개 이상). 이미 가진 볼은 그대로 쓴다
-  leagues:[{name:'브론즈', an:'폐허 놀이터', min:0, c:'#c8844a', tier:1, dmg:1, pats:['spiral', 'fan'], balls:['fire', 'frost', 'bomb', 'pierce', 'giant', 'meteor']},
-    {name:'실버', an:'버려진 쇼핑몰', min:120, c:'#b8c4d0', tier:1, dmg:1.15, pats:['spiral', 'fan', 'aimall'], balls:['poison', 'spark', 'split', 'crit', 'vamp', 'holy']},
+  leagues:[{name:'브론즈', an:'폐허 놀이터', min:0, c:'#c8844a', tier:1, dmg:1, pats:['spiral', 'fan'], balls:['fire', 'frost', 'split', 'pierce', 'giant', 'meteor']},
+    {name:'실버', an:'버려진 쇼핑몰', min:120, c:'#b8c4d0', tier:1, dmg:1.15, pats:['spiral', 'fan', 'aimall'], balls:['poison', 'spark', 'bomb', 'crit', 'vamp', 'holy']},
     {name:'골드', an:'군사 기지', min:300, c:'#ffd34a', tier:2, dmg:1.3, pats:['spiral', 'fan', 'aimall', 'flower'], balls:['wind', 'swift', 'bleed', 'homing', 'stun', 'phoenix']},
     {name:'플래티넘', an:'병원 지하', min:600, c:'#6ae0d0', tier:3, dmg:1.5, pats:['flower', 'aimall', 'fan', 'spiral'], balls:['lucky', 'acid', 'ricochet', 'shatter', 'execute', 'echo']},
     {name:'다이아', an:'좀비 왕좌', min:1000, c:'#8ab4ff', tier:3, dmg:1.75, pats:['flower', 'aimall', 'fan', 'spiral', 'storm'], balls:['rot', 'curse', 'nova', 'gravity', 'prism', 'chrono']}],
@@ -305,7 +305,7 @@ const CHARS = Object.keys(CHAR).map(id => ({id, name:CHAR[id].name}));
 
 // ---------- 저장 (M4에서 장비 강화·캐릭터 선택 추가) ----------
 // bag: 보유 볼 {id: {n: 남은 사본, lv}}, deck: 장착 볼 id (최대 8), plv/pxp: 플레이어 레벨·경험치, chars: {id: {owned, shards}}
-function freshMeta() { return {v:1, set:{sfx:.8, music:.6}, sel:'hero', maxLevel:0, raidWins:0, pinball:0, plv:1, pxp:0, autoT:Date.now(), rt:5, rtT:Date.now(), bag:{fire:{n:0, lv:1}, frost:{n:0, lv:1}, bomb:{n:0, lv:1}}, deck:['fire', 'frost'], chars:Object.fromEntries(CHARS.map(c => [c.id, {owned:c.id === 'hero', shards:0}]))}; }
+function freshMeta() { return {v:1, set:{sfx:.8, music:.6}, sel:'hero', maxLevel:0, raidWins:0, pinball:0, plv:1, pxp:0, autoT:Date.now(), rt:5, rtT:Date.now(), bag:{fire:{n:0, lv:1}, frost:{n:0, lv:1}, split:{n:0, lv:1}}, deck:['fire', 'frost'], chars:Object.fromEntries(CHARS.map(c => [c.id, {owned:c.id === 'hero', shards:0}]))}; }
 function loadMeta() {
   const m = freshMeta();
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; Object.assign(m, s, {chars:Object.assign(m.chars, s.chars || {})}); } catch (e) { /* 손상·차단: 새로 시작 */ }
