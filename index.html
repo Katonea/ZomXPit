@@ -184,7 +184,9 @@ const FORMS = {
   block: {name:'방진', cells:() => [-1.5, -.5, .5, 1.5].flatMap(c => [0, 1, 2, 3].map(r => [c, r])), size:[16, 16]},
   wedge: {name:'쐐기', cells:() => [[0, 0], [-.5, 1], [.5, 1], [-1, 2], [0, 2], [1, 2], [-1.5, 3], [-.5, 3], [.5, 3], [1.5, 3]], size:[10, 10]},
   wall:  {name:'장벽', cells:n => [0, 1, 2].flatMap(r => [...Array(n)].map((_, i) => [i - (n - 1)/2, r])), size:[7, 9]},
+  horde: {name:'대군', cells:(n, rows) => [...Array(rows)].flatMap((_, r) => [...Array(n)].map((_, i) => [i - (n - 1)/2, r])), size:[99, 99]}, // 보드 폭을 꽉 채운 덩어리 (Ball x Pit 후반 물량)
 };
+const HORDE = {p0:.3, pw:.12, rows0:4, rowsW:1, rowsMax:9}; // 대군 확률 = p0 + pw×웨이브, 줄 수 = rows0 + rowsW×웨이브 (최대 rowsMax)
 const FORM_GAP = {x:44, y:62}; // 몬스터 지름(40)에 맞춘 빽빽한 간격 (Ball x Pit의 타일 덩어리)
 // ---------- 데이터: 레벨 (DESIGN 5장) ----------
 // 레벨 디자인 (DESIGN 5장): 레벨마다 이름·새 적 1종·대형 성격이 다르다. 수치는 봇 시뮬레이션(예상 플레이어 레벨 기준 클리어율)으로 맞춤
@@ -219,7 +221,7 @@ const waveOf = (L, w) => L.waveLen || waveLen(w);        // 성 침략 레벨은
 const spawnEvery = w => Math.max(.35, 1.15 - .12*w);   // 웨이브가 지날수록 촘촘
 const reward = (L, first) => first ? 20 + 2*L : 8 + L; // 핀볼 (DESIGN 5장)
 const RULE = {maxLv:5, maxFns:4, slots:8, ballSpeed:650, returnSpeed:1100, crit:.05,
-  itemSlots:4, upDrop:.005, mobHp:1/7.5, spawnMul:9.4, mobXp:1/12, upCount:[60, 25, 10, 5], magnet:0, eliteEvery:25, bossDelay:2, formGap:1.2, bigPer:7, // bigPer = 대형 몇 마리당 큰 좀비 1마리 (정예와 같은 크기·체력, 강화 확정 드롭 없음)
+  itemSlots:4, upDrop:.005, mobHp:2/7.5, spawnMul:14, mobXp:1/12, upCount:[60, 25, 10, 5], magnet:0, eliteEvery:25, bossDelay:2, formGap:1.2, bigPer:7, // bigPer = 대형 몇 마리당 큰 좀비 1마리 (정예와 같은 크기·체력, 강화 확정 드롭 없음)
   xpBase:6, xpPer:3, hpGrow:75, meleeR:34, engageR:110, waveDense:.18, arrowCap:5, chargeCap:2, guardPass:0}; // meleeR = 근접 좀비 공격 사거리(몸 테두리 사이 거리), engageR = 이 거리 안이면 대형에서 빠져나와 달려듦, waveDense = 웨이브마다 생성량 +18%. 필요 경험치 = xpBase + xpPer × 레벨. arrowCap = 화면 안 궁수 화살 최대, chargeCap = 동시에 돌진(예고 포함)하는 멧돼지 최대 (몬스터가 6배라 위협은 상한으로 묶음), guardPass = 방패병이 앞에서 막아도 통과하는 피해 비율
 
 // ---------- 데이터: 성 침략 (DESIGN 17장) ----------
@@ -1085,9 +1087,9 @@ function spawn(type, elite) {
 // 대형 스폰: 횡대·방진·쐐기·종대 중 하나. 한 행은 같은 종류, 원거리·지원은 뒤쪽 행. 대형 전체가 가장 느린 멤버 속도로 함께 이동
 const isBack = t => ENEMY[t].ranged || ENEMY[t].support || ENEMY[t].caster ? 1 : 0;
 function spawnFormation() {
-  const L = S.level, keys = L.forms || Object.keys(FORMS), f = FORMS[keys[Math.floor(rand()*keys.length)]];
+  const L = S.level, keys = (L.forms || Object.keys(FORMS)).filter(k => k !== 'horde'), hd = !L.raid && rand() < HORDE.p0 + HORDE.pw*S.wave, f = FORMS[hd ? 'horde' : keys[Math.floor(rand()*keys.length)]];
   const maxCols = Math.max(1, Math.floor((S.fw - 40)/FORM_GAP.x));
-  const cells = f.cells(Math.min(maxCols, f.size[0] + Math.floor(rand()*(f.size[1] - f.size[0] + 1)))).filter(([c]) => Math.abs(c) <= (maxCols - 1)/2);
+  const cells = (hd ? f.cells(maxCols, Math.min(HORDE.rowsMax, HORDE.rows0 + HORDE.rowsW*S.wave)) : f.cells(Math.min(maxCols, f.size[0] + Math.floor(rand()*(f.size[1] - f.size[0] + 1))))).filter(([c]) => Math.abs(c) <= (maxCols - 1)/2);
   const rows = [...new Set(cells.map(c => c[1]))].sort((a, b) => a - b);
   const types = rows.map(() => wkey(L.mix)).sort((a, b) => isBack(a) - isBack(b)), rowType = {};
   rows.forEach((r, i) => rowType[r] = types[i]);
@@ -1325,7 +1327,7 @@ function updateWaves(dt) {
     if ((S.waveT -= dt) <= 0) {
       if (++S.wave >= L.waves) S.wavesDone = true; else { S.waveT = waveOf(L, S.wave); toast('웨이브 ' + (S.wave + 1) + ' / ' + L.waves); }
     }
-    if ((S.spawnT -= dt) <= 0 && S.enemies.filter(o => o.y < TOP).length > 40*S.fw/FIELD.startW) S.spawnT = .3; // 생성 대기: 화면 밖 대기열이 차 있으면 잠깐 미룸
+    if ((S.spawnT -= dt) <= 0 && S.enemies.filter(o => o.y < TOP).length > 110*S.fw/FIELD.startW) S.spawnT = .3; // 생성 대기: 화면 밖 대기열이 차 있으면 잠깐 미룸
     else if (S.spawnT <= 0) S.spawnT = spawnFormation()*spawnEvery(S.wave)*RULE.formGap/RULE.spawnMul/(S.fw/FIELD.startW)/(1 + RULE.waveDense*S.wave); // 대형 크기만큼 다음 대형까지 간격. 보드가 넓어지면 그만큼, 웨이브마다 더 촘촘
     if ((S.eliteT -= dt) <= 0) { S.eliteT = RULE.eliteEvery; const types = Object.keys(L.mix); spawn(types[Math.floor(rand()*types.length)], true); }
   }
