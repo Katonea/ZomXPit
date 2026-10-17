@@ -206,17 +206,6 @@ const LEVELS = [
   {id:8,  name:'진압 방벽', mid:'mbsnipe', hpMul:2.58, bossMul:1.93, dmgMul:1.45, waves:6, midAfter:3, boss:'digger',  mix:{shield:2, knight:2, bomber:1, priest:1, boar:1}, forms:['block', 'wall']},
   {id:9,  name:'총공세', mid:'mbflame',    hpMul:2.91, bossMul:1.70, dmgMul:1.5, waves:6, midAfter:3, boss:'paladin', mix:{boar:2, knight:3, archer:2, shield:1, priest:1, bomber:2}},
   {id:10, name:'정유소', mid:'mbtoxic',    hpMul:2.3, bossMul:0.70, dmgMul:1.0, waves:7, midAfter:3, boss:'archmage', mix:{boar:2, knight:3, archer:1, shield:1, priest:1, bomber:1, mage:1}},
-  // 11~20 (2026-10-14): 레벨마다 2단계 좀비 1종씩 등장 → 섞임. 보스는 탱크 3종을 돌려 씀
-  {id:11, name:'공사장', mid:'midboss',      hpMul:2.45, bossMul:3.12, dmgMul:1.05, waves:7, midAfter:3, boss:'butcher',  mix:{knight:3, helmet:3, archer:1, boar:1}, forms:['block', 'wall']},
-  {id:12, name:'마라톤 길', mid:'mbdash',   hpMul:2.6, bossMul:3.97, dmgMul:1.1, waves:7, midAfter:3, boss:'captain',  mix:{runner:4, knight:2, helmet:1, archer:1, priest:1}, forms:['row', 'wedge']},
-  {id:13, name:'교도소', mid:'mbsnipe',      hpMul:2.75, bossMul:1.23, dmgMul:1.15, waves:7, midAfter:3, boss:'digger', mix:{convict:3, knight:2, shield:2, archer:1}, forms:['wall', 'block']},
-  {id:14, name:'하수 처리장', mid:'mbflame', hpMul:2.9, bossMul:1.11, dmgMul:1.1, waves:7, midAfter:3, boss:'paladin',  mix:{fatty:2, knight:3, runner:2, priest:1, bomber:1}},
-  {id:15, name:'응급실', mid:'mbtoxic',      hpMul:3.05, bossMul:1.60, dmgMul:1.25, waves:7, midAfter:3, boss:'archmage',  mix:{syringe:2, priest:1, knight:3, helmet:2, boar:1}},
-  {id:16, name:'고속도로', mid:'midboss',    hpMul:3.2, bossMul:4.58, dmgMul:1.45, waves:7, midAfter:3, boss:'butcher', mix:{runner:4, boar:3, bomber:2, archer:1}, forms:['row', 'wedge']},
-  {id:17, name:'철거 현장', mid:'mbdash',   hpMul:3.35, bossMul:3.60, dmgMul:1.35, waves:7, midAfter:3, boss:'captain',  mix:{helmet:3, fatty:2, bomber:2, convict:1, archer:1}, forms:['block', 'wall']},
-  {id:18, name:'감옥 폭동', mid:'mbsnipe',   hpMul:3.5, bossMul:2.57, dmgMul:1.5, waves:7, midAfter:3, boss:'digger',  mix:{convict:3, shield:2, runner:2, syringe:1, knight:2}},
-  {id:19, name:'오염 지대', mid:'mbflame',   hpMul:3.65, bossMul:0.45, dmgMul:1.0, waves:7, midAfter:3, boss:'paladin', mix:{fatty:2, syringe:2, mage:1, helmet:2, runner:2, priest:1, spitter:1}},
-  {id:20, name:'폐허의 왕좌', mid:'mbtoxic', hpMul:3.8, bossMul:1.20, dmgMul:1.4, waves:8, midAfter:4, boss:'archmage',  mix:{runner:2, helmet:2, fatty:1, convict:2, syringe:1, shield:1, boar:1, bomber:1, mage:1, spitter:1}},
 ];
 const waveLen = w => w < 2 ? 20 : 25;                  // 웨이브 1~2는 20초, 이후 25초
 const waveOf = (L, w) => L.waveLen || waveLen(w);        // 성 침략 레벨은 웨이브가 짧다
@@ -315,6 +304,7 @@ function loadMeta() {
   for (const k of ['equip', 'equipped', 'uid', 'pbLv', 'pbXp']) delete m[k]; // 장비·핀볼 레벨 제거 이전 저장
   m.set = Object.assign({sfx:.8, music:.6, vib:1}, m.set); m.tut = Object.assign({seen:{}}, m.tut); // 튜토리얼 본 기록
   if (!m.set.ctrlPicked) m.set.ctrl = 'stick'; // 직접 고른 적 없으면 좌우 스틱
+  m.maxLevel = Math.min(m.maxLevel || 0, LEVELS.length); // 레벨을 10까지로 줄이기 전 저장(최대 20)
   m.deck = m.deck.filter(id => m.bag[id]).slice(0, DECK_MAX);
   return m;
 }
