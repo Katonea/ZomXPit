@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ZomXPit 과제 PRD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Silkscreen&display=swap">
+<style>
+html,body{margin:0}
+
+/* Theme A (ash bento), matched to the approved mock.
+   Layout: 12-col bento board. One dark "cabinet" tile runs a code-drawn pixel preview of the battle and pinball scenes; every other tile is a quiet ash card that opens a full detail sheet. */
+:root {
+  --bg: #e9e8e3;          /* ash concrete */
+  --tile: #f7f6f2;
+  --tile-2: #dfe3d6;      /* moss-tinted tile */
+  --ink: #1f2320;
+  --muted: #5d625b;
+  --line: #cfcdc5;
+  --slime: #3f9a2a;       /* zombie skin / EXP green, from the game palette */
+  --slime-soft: #d6ebc9;
+  --jack: #d83a8a;        /* jackpot pink */
+  --jack-soft: #f8d9e8;
+  --cab: #1d1a26;         /* arcade cabinet, same in both themes */
+  --cab-ink: #f1eee6;
+  --cab-dim: #9a93ad;
+  --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 24px -16px rgba(30,30,20,.35);
+  --f-display: "Noto Sans KR", system-ui, sans-serif;
+  --f-body: "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  --f-pixel: "Silkscreen", ui-monospace, monospace;
+  --r: 18px;
+}
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--jack); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; padding: 4px 4px 6px; }
+.brand { display: grid; gap: 2px; }
+.eyebrow { font-family: var(--f-pixel); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(34px, 6vw, 56px); line-height: 1; margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--slime); }
+.top .meta { color: var(--muted); font-size: 13px; text-align: right; }
+.top .meta .who { color: var(--ink); font-size: 15px; font-weight: 700; }
+.top .meta .period { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; grid-auto-flow: dense; }
+.tile { grid-column: span 4; background: var(--tile); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 10px; min-width: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; position: relative;
+  transition: transform .18s ease, border-color .18s ease; }
+.tile:hover { transform: translateY(-2px); border-color: var(--slime); }
+.tile h2 { font-family: var(--f-display); font-weight: 700; font-size: 22px; line-height: 1.2; margin: 0; text-wrap: balance; }
+.tile p { margin: 0; color: var(--muted); font-size: 14px; }
+.tile .more { margin-top: auto; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; color: var(--slime); }
+.tile .tag { font-family: var(--f-pixel); font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.w3 { grid-column: span 3; } .w5 { grid-column: span 5; } .w6 { grid-column: span 6; } .w7 { grid-column: span 7; } .w8 { grid-column: span 8; } .w12 { grid-column: span 12; }
+.tall { grid-row: span 2; }
+.tall3 { grid-row: span 3; }
+.sheet .eyebrow { padding-right: 48px; }
+.moss { background: var(--tile-2); }
+
+/* cabinet tile */
+.cab { background: var(--cab); color: var(--cab-ink); border-color: transparent; cursor: default; padding: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.cab:hover { transform: none; }
+.cab .info { padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+.cab .eyebrow { color: var(--cab-dim); }
+.cab h2 { font-size: 30px; }
+.cab p { color: #cfc9dc; font-size: 15px; }
+.cab .stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; border-left: 1px solid #2c2838; background: radial-gradient(circle at 50% 40%, #2b2440, var(--cab) 70%); }
+.phone { margin: 0; width: min(300px, 100%); aspect-ratio: 9 / 16; border-radius: 26px; padding: 8px; background: #0b0910; box-shadow: 0 0 0 2px #3a3350, 0 20px 40px -16px rgba(0,0,0,.7); max-width: 100%; }
+.phone canvas { width: 100%; height: 100%; display: block; border-radius: 19px; background: #140f0b; image-rendering: pixelated; image-rendering: crisp-edges; }
+.cab figcaption { font-family: var(--f-pixel); font-size: 11px; letter-spacing: .05em; color: var(--cab-dim); text-align: center; }
+.chip.dark { background: #2c2740; color: var(--cab-ink); }
+.chip.dark.pinkd { background: #5a2342; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; border: 2px solid transparent; }
+.btn.play { background: #8ae04a; color: #10200a; box-shadow: 0 4px 0 #3f7a22; }
+.btn.play:hover { transform: translateY(1px); box-shadow: 0 3px 0 #3f7a22; }
+.btn.ghost { border-color: #4a4460; color: var(--cab-ink); background: transparent; cursor: pointer; font-family: inherit; }
+.btn.ghost:hover { border-color: #8ae04a; }
+.btn .px { font-family: var(--f-pixel); font-size: 12px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+.stat { border-top: 1px solid #39334a; padding-top: 8px; }
+.stat b { display: block; font-family: var(--f-pixel); font-size: 20px; color: #ffe45a; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--cab-dim); }
+
+/* tile previews */
+.big-num { font-family: var(--f-pixel); font-size: 34px; line-height: 1; color: var(--slime); font-variant-numeric: tabular-nums; }
+.mini-loop { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--slime-soft); color: var(--ink); white-space: nowrap; }
+.chip.pink { background: var(--jack-soft); }
+.chip.red { background: #f6e0da; color: #8a2a1e; }
+.chip.plain { background: transparent; border: 1px solid var(--line); }
+.tile .hyp { font-family: var(--f-display); font-weight: 700; font-size: 21px; line-height: 1.35; color: var(--ink); margin: 0; }
+.bar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.quote { font-size: 14px; border-left: 3px solid var(--jack); padding-left: 10px; color: var(--ink); margin: 0; }
+.spark { width: 100%; height: 56px; display: block; }
+
+/* sheet */
+.sheet-bg { position: fixed; inset: 0; background: rgba(10,10,14,.55); z-index: 20; display: flex; justify-content: center; align-items: flex-start;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
+.sheet { background: var(--tile); border: 1px solid var(--line); border-radius: 22px; width: min(920px, 100%); padding: 28px clamp(18px, 4vw, 40px) 36px; position: relative; display: grid; gap: 18px; min-width: 0; }
+.sheet .close { position: sticky; top: 0; justify-self: end; margin: -8px -8px -44px 0; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--tile); color: var(--ink); font-size: 20px; cursor: pointer; z-index: 2; }
+.sheet h2 { font-family: var(--f-display); font-weight: 900; font-size: clamp(26px, 4vw, 36px); margin: 0; line-height: 1.15; text-wrap: balance; padding-right: 48px; }
+.sheet h3 { font-size: 17px; margin: 10px 0 0; }
+.sheet p, .sheet li { max-width: 68ch; }
+.sheet p { margin: 0; }
+.sheet ul, .sheet ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.lead { font-size: 17px; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 500; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card .pill { justify-self: start; }
+.pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; font-weight: 500; }
+.pill.keep { background: var(--slime-soft); }
+.pill.mod { background: #f3e2b4; color: #4a3a06; }
+.pill.drop { background: var(--jack-soft); }
+.pill.ai { border: 1px solid var(--line); }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; background: var(--bg); padding: 1px 5px; border-radius: 5px; }
+.tl { display: grid; gap: 0; }
+.tl .day { font-family: var(--f-pixel); font-size: 12px; color: var(--muted); margin: 14px 0 6px; letter-spacing: .06em; }
+.tl .ev { display: grid; grid-template-columns: 56px minmax(0,1fr); gap: 12px; padding: 8px 0; border-top: 1px dashed var(--line); }
+.tl .ev time { font-family: var(--f-pixel); font-size: 12px; color: var(--slime); padding-top: 2px; }
+.tl .ev b { font-weight: 700; }
+.tl .ev p { color: var(--muted); font-size: 14px; }
+.prompt { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--bg); }
+.prompt time { font-family: var(--f-pixel); font-size: 11px; color: var(--muted); }
+.prompt q { quotes: none; white-space: pre-line; }
+.prompt .so { font-size: 13px; color: var(--muted); }
+.diagram { overflow-x: auto; }
+.diagram svg { width: 100%; min-width: 620px; height: auto; display: block; }
+.note { font-size: 13px; color: var(--muted); }
+.todo { background: #f3e2b4; color: #4a3a06; padding: 1px 6px; border-radius: 5px; font-size: .92em; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 4px; min-width: 0; }
+.card b { font-size: 15px; }
+.card span { color: var(--muted); font-size: 14px; }
+.logbtn { text-align: left; font: inherit; color: inherit; background: var(--bg); cursor: pointer; }
+.logbtn:hover { border-color: var(--slime); }
+.logtools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; position: sticky; top: 40px; background: var(--tile); padding-block: 8px; z-index: 1; }
+.logtools input[type="search"] { flex: 1 1 200px; min-width: 0; font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.logtools label { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.logtools .cnt { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.msgs { display: grid; gap: 8px; min-width: 0; }
+.msg { border-radius: 12px; padding: 10px 14px; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.msg .who { display: block; font-family: var(--f-pixel); font-size: 11px; letter-spacing: .05em; margin-bottom: 4px; color: var(--muted); }
+.msg.user { background: var(--slime-soft); }
+.msg.ai { background: var(--bg); }
+.msg.sys { background: transparent; border: 1px dashed var(--line); color: var(--muted); font-size: 12.5px; }
+.msg.head { background: transparent; font-weight: 700; padding: 4px 0; }
+.more-btn { justify-self: center; font: inherit; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--tile); color: var(--ink); cursor: pointer; }
+footer { color: var(--muted); font-size: 12px; text-align: center; padding-top: 8px; }
+
+@media (max-width: 980px) {
+  .bento { grid-template-columns: repeat(6, minmax(0,1fr)); }
+  .tile, .w3, .w4, .w5 { grid-column: span 3; }
+  .w6, .w7, .w8, .w12 { grid-column: span 6; }
+  .tall, .tall3 { grid-row: auto; }
+}
+@media (max-width: 640px) {
+  .bento { grid-template-columns: minmax(0,1fr); }
+  .tile, .w3, .w5, .w6, .w7, .w8, .w12 { grid-column: 1 / -1; }
+  .cab { grid-template-columns: minmax(0,1fr); }
+  .cab .stage { border-left: 0; border-top: 1px solid #2c2838; order: -1; }
+  .phone { width: min(260px, 100%); }
+  .stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .top .meta { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } .tile:hover { transform: none; } }
+
+/* ---------- Theme A refinements (approved mock) ---------- */
+:root { --r: 16px; }
+h1 span { color: var(--jack); }
+.eyebrow, .tile .tag, .tile .more, .cab figcaption { font-family: var(--f-body); font-weight: 700; letter-spacing: .02em; text-transform: none; }
+.tile .tag, .eyebrow { font-size: 12px; }
+.tile .more { font-size: 12px; }
+.tile { box-shadow: none; padding: 22px; }
+.tile:hover { transform: none; border-color: var(--slime); }
+.bento { gap: 12px; }
+.cab { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); }
+.cab .info { justify-content: center; padding: 32px; }
+.cab .btns { margin-top: 6px; }
+.cab .stage { background: transparent; border-left: 0; padding: 20px 28px 20px 0; }
+.phone { width: min(230px, 100%); box-shadow: 0 0 0 1px #3a3350; }
+.btn { border-radius: 10px; padding: 11px 18px; }
+.btn.play { background: var(--slime); color: #fff; box-shadow: none; }
+.btn.play:hover { transform: none; box-shadow: none; filter: brightness(1.08); }
+.chip { font-weight: 700; color: #2f6f20; }
+.chip.pink { color: #8f1f58; }
+.chip.plain { color: var(--muted); font-weight: 500; }
+.chip.dark, .chip.dark.pinkd { color: var(--cab-ink); font-weight: 500; }
+h1, h2, h3, .hyp { word-break: keep-all; }
+@media (max-width: 640px) { .cab { grid-template-columns: minmax(0,1fr); } .cab .stage { padding: 22px 22px 0; border-top: 0; } .cab .info { padding: 22px; } .phone { width: min(200px, 100%); } .cab h2 { font-size: 26px; } }
+
+/* ---------- Match mock A exactly: compact tiles (tag + headline), compact hero ---------- */
+.tile { padding: 18px 20px; gap: 8px; }
+.tile .tag { font-size: 13px; color: var(--muted); }
+.tile h2 { font-size: 21px; font-weight: 800; }
+.tile > p:not(.hyp), .tile .more, .tile .spark + p { display: none; }
+.tile .hyp { font-weight: 800; font-size: 21px; }
+.bento { gap: 14px; }
+.cab { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.cab .info { padding: 22px 24px; gap: 10px; }
+.cab h2 { font-size: 28px; font-weight: 800; }
+.cab .info p { font-size: 15px; }
+.cab .mini-loop, .cab .btn.ghost, .cab figcaption { display: none; }
+.cab .stage { padding: 18px 20px 18px 0; }
+.phone { width: 150px; border-radius: 16px; padding: 4px; }
+.phone canvas { border-radius: 12px; }
+.btn.play { font-size: 16px; padding: 11px 20px; }
+.spark { display: none; }
+.hpbar { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.hpbar i { display: block; height: 100%; width: 70%; background: var(--slime); }
+@media (max-width: 640px) { .cab { grid-template-columns: minmax(0,1fr); } .cab .stage { padding: 20px 20px 0; } .phone { width: 150px; } }
+
+/* owner edit mode */
+.edbar { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40; display: grid; justify-items: end; gap: 8px; max-width: calc(100vw - 32px); }
+.ed-toggle { font: inherit; font-weight: 700; font-size: 14px; padding: 10px 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--tile); color: var(--ink); cursor: pointer; box-shadow: var(--shadow); }
+.editing .ed-toggle { background: var(--jack); border-color: var(--jack); color: #fff; }
+.ed-panel { width: min(340px, calc(100vw - 32px)); background: var(--tile); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; box-shadow: 0 12px 32px -12px rgba(0,0,0,.35); }
+.ed-hint, .ed-msg { margin: 0; font-size: 13px; color: var(--muted); }
+.ed-msg:empty { display: none; }
+.ed-row { display: flex; align-items: center; gap: 8px; }
+.ed-count { flex: 1; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ed-btn { font: inherit; font-weight: 700; font-size: 14px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--slime); background: var(--slime); color: #fff; cursor: pointer; }
+.ed-btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.editing [contenteditable="true"] { outline: 1.5px dashed var(--jack); outline-offset: 4px; border-radius: 4px; cursor: text; }
+.editing .cab [contenteditable="true"] { outline-color: #ff8fc8; }
+.editing #sheetBody[contenteditable="true"] { outline-offset: 8px; }
+.ed-tile { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: var(--jack-soft); }
+.ed-label { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ed-field { background: var(--tile); padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+@media print { .edbar { display: none; } }
+.lvtrack { display: flex; gap: 4px; margin-top: 4px; }
+.lvtrack .seg { flex: 1; text-align: center; font-size: 13px; font-weight: 800; padding: 7px 0; border-radius: 99px; font-variant-numeric: tabular-nums; }
+.lvtrack .seg.ok { background: var(--slime-soft); color: #2f6f20; }
+.lvtrack .seg.grow { flex: 4.5; background: var(--jack-soft); color: #8f1f58; }
+.lvlegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.lvlegend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.lvlegend i.ok { background: var(--slime); } .lvlegend i.grow { background: var(--jack); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">AI Native 게임 PD · 과제 · 코어 루프</span>
+      <h1>Zom<span>X</span>Pit</h1>
+    </div>
+    <div class="meta"><b class="who">기획·개발 유동찬</b><br><span class="period">작업 기간 2026.10.12 ~ 10.17 (6일)</span><br>좀비 무리를 공으로 튕겨 잡는 세로형 HTML5 게임<br>PRD · AI 활용 내역 · 플레이 빌드</div>
+  </header>
+
+  <main class="bento" id="bento">
+    <section class="tile cab w12" aria-label="결과물">
+      <div class="info">
+        <span class="eyebrow">결과물 · HTML5 웹 데모</span>
+        <h2>로그라이크 핀볼 액션</h2>
+        <p>Ball x Pit의 조작·로그라이크 + 뚜까펫의 핀볼 성장. 가볍고 빠르게 한 판.</p>
+        <div class="mini-loop"><span class="chip dark">Ball x Pit 전투</span><span class="chip dark">→</span><span class="chip dark pinkd">뚜까펫 핀볼 성장</span><span class="chip dark">→</span><span class="chip dark">다시 전투</span></div>
+        <div class="btns">
+          <a class="btn play" href="https://katonea.github.io/zomxpit/" target="_blank" rel="noopener"><span class="px">▶</span> 게임 실행</a>
+          <button class="btn ghost" data-open="run" type="button">실행 방법</button>
+        </div>
+      </div>
+      <div class="stage"><figure class="phone"><canvas id="demo" role="img" aria-label="코드로 그린 게임 미리보기: 소녀가 공을 튕겨 좀비 대형을 잡고, 번 핀볼을 핀볼 머신에 쏘는 장면이 번갈아 나옴"></canvas></figure><figcaption id="demoCap">전투 · 공은 소녀에게 돌아와야 다시 쏜다</figcaption></div>
+    </section>
+
+    <button class="tile w6" data-open="concept" type="button">
+      <span class="tag">신규 게임 컨셉</span>
+      <h2>Ball x Pit의 전투 + 뚜까펫의 핀볼 성장</h2>
+      <p>선택: 코어 루프. 전투는 Ball x Pit의 조작·로그라이크를, 성장은 뚜까펫의 핀볼 수급 구조를 가져와 하나의 루프로 엮었습니다.</p>
+      <div class="mini-loop"><span class="chip">조작·로그라이크</span><span class="chip pink">핀볼로 캐릭터·재화</span><span class="chip plain">모바일 웹</span></div>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w6 moss" data-open="fun" type="button">
+      <span class="tag">PRD ① 재미 가설 / 목표</span>
+      <p class="hyp">가볍게 즐기는 Ball x Pit식 전투에 핀볼 성장을 얹으면, 두 재미가 자연스럽게 맞물려 더 재미있어질까?</p>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w4" data-open="loop" type="button">
+      <span class="tag">PRD ② 핵심 메커니즘</span>
+      <h2>규칙 · 조작 · 승패 · 흐름</h2>
+      <div class="mini-loop"><span class="chip plain">로비</span><span class="chip">전투</span><span class="chip red">침략</span><span class="chip plain">결과</span><span class="chip pink">핀볼 머신</span><span class="chip plain">영구 성장</span></div>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w4" data-open="balance" type="button">
+      <span class="tag">PRD ③ 밸런싱 / 수치</span>
+      <h2>레벨 10개 난이도 곡선</h2>
+      <div class="lvtrack" role="img" aria-label="레벨 1~2는 기본 상태로 무난, 레벨 3부터는 핀볼 성장 필요"><span class="seg ok">L1</span><span class="seg ok">L2</span><span class="seg grow">L3 → L10</span></div>
+      <div class="lvlegend"><span><i class="ok"></i>기본 상태로 무난</span><span><i class="grow"></i>핀볼 성장 필요</span></div>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    
+
+    
+
+    
+
+    
+
+    
+    <button class="tile w4" data-open="scope" type="button">
+      <span class="tag">PRD ④ 범위</span>
+      <h2>만든 것 / 만들지 않은 것</h2>
+      <p>서버 없이 한 사이클이 끝까지 도는 범위. 결제·실유저 PvP는 제외.</p>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w4" data-open="success" type="button">
+      <span class="tag">PRD ⑤ 성공 기준</span>
+      <h2>개발을 이어가 실제 라이브 서비스할 만한 재미가 있는가?</h2>
+      <p>자연스러운 루프 · 재플레이 의향 · 성장 욕구 세 가지로 판단합니다.</p>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w4" data-open="log" type="button">
+      <span class="tag">AI 활용 ① 대화 내용</span>
+      <h2>대화 원문 첨부</h2>
+      <p>방향을 바꾼 프롬프트 원문과 사용한 툴. 전체 원문은 첨부.</p>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w4" data-open="decisions" type="button">
+      <span class="tag">AI 활용 ② 채택 / 수정 / 폐기</span>
+      <h2>AI 제안을 어떻게 걸렀나</h2>
+      <p>그대로 쓴 것, 고친 것, 버린 것과 그 이유. 주인공은 고블린 → 해골 → 거북 → 총 든 소녀로 바뀌었습니다.</p>
+      <span class="more">OPEN ›</span>
+    </button>
+
+    <button class="tile w12" data-open="run" type="button">
+      <span class="tag">결과물 실행 방법</span>
+      <h2>링크 하나로 실행</h2>
+      <p>폰에서 열고 "홈 화면에 추가". 한 사이클 순서 안내.</p>
+      <span class="more">OPEN ›</span>
+    </button>
+  </main>
+
+  <footer>ZomXPit · AI Native 게임 PD 과제 · 유동찬</footer>
+</div>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <article class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <button class="close" id="closeBtn" type="button" aria-label="닫기">×</button>
+    <div id="edTile" class="ed-tile" hidden></div>
+    <div id="sheetBody" style="display:grid;gap:16px;min-width:0"></div>
+  </article>
+</div>
+
+<script>
+const LEVEL_HP = [0.80,1.08,1.21,1.58,1.84,2.01,2.18,2.58,2.91,2.3];
+
+const LOOP_SVG = `<div class="diagram"><svg viewBox="0 0 760 330" role="img" aria-label="코어 루프 한 사이클">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+<g fill="none" stroke="var(--muted)" stroke-width="1.4">
+<path d="M236 106H272" marker-end="url(#ar)"/><path d="M488 106H524" marker-end="url(#ar)"/><path d="M632 150V214" marker-end="url(#ar)"/><path d="M524 258H488" marker-end="url(#ar)"/><path d="M272 258H128V150" marker-end="url(#ar)"/></g>
+<g font-family="Noto Sans KR, sans-serif">
+<rect x="20" y="62" width="216" height="88" rx="10" fill="var(--tile)" stroke="var(--line)"/><text x="34" y="88" font-size="14" font-weight="700" fill="var(--ink)">로비 · 출전 준비</text><text x="34" y="110" font-size="12.5" fill="var(--muted)">장착 볼 중 2개 골라 출전</text><text x="34" y="128" font-size="12.5" fill="var(--muted)">자동 사냥 핀볼 받기</text>
+<rect x="272" y="62" width="216" height="88" rx="10" fill="var(--slime-soft)" stroke="var(--slime)" stroke-width="2"/><text x="286" y="88" font-size="14" font-weight="700" fill="var(--ink)">전투 (레벨 10개)</text><text x="286" y="110" font-size="12.5" fill="var(--ink)">웨이브 → 중간 → 최종 보스</text><text x="286" y="128" font-size="12.5" fill="var(--ink)">레벨업 카드 · 융합 · 캡슐</text><text x="286" y="144" font-size="11.5" fill="var(--muted)">판이 끝나면 초기화</text>
+<rect x="524" y="62" width="216" height="88" rx="10" fill="var(--tile)" stroke="var(--line)"/><text x="538" y="88" font-size="14" font-weight="700" fill="var(--ink)">결과</text><text x="538" y="110" font-size="12.5" fill="var(--muted)">승패 모두 핀볼 지급</text><text x="538" y="128" font-size="12.5" fill="var(--muted)">첫 클리어 20 + 2×레벨</text>
+<rect x="524" y="214" width="216" height="88" rx="10" fill="var(--jack-soft)" stroke="var(--jack)" stroke-width="2"/><text x="538" y="240" font-size="14" font-weight="700" fill="var(--ink)">핀볼 머신</text><text x="538" y="262" font-size="12.5" fill="var(--ink)">EXP 칸 96% · 잭팟 4%</text><text x="538" y="280" font-size="12.5" fill="var(--ink)">잭팟: 볼 · 캐릭터 · 핀볼</text>
+<rect x="272" y="214" width="216" height="88" rx="10" fill="var(--tile)" stroke="var(--line)"/><text x="286" y="240" font-size="14" font-weight="700" fill="var(--ink)">영구 성장</text><text x="286" y="262" font-size="12.5" fill="var(--muted)">플레이어 Lv · 볼 Lv</text><text x="286" y="280" font-size="12.5" fill="var(--muted)">캐릭터 해금 · 강화</text>
+<text x="642" y="186" font-size="12" fill="var(--muted)">핀볼</text><text x="138" y="196" font-size="12" fill="var(--muted)">더 강해져서 재도전</text>
+<text x="20" y="34" font-size="15" font-weight="700" fill="var(--ink)">판 안 성장은 사라지고, 핀볼로 얻은 성장만 남는다</text></g></svg></div>`;
+
+const S = {
+concept: `<span class="eyebrow">신규 게임 컨셉 정의</span><h2>Ball x Pit의 전투와 뚜까펫의 핀볼 성장을 엮은 로그라이크 핀볼 액션</h2>
+<p class="lead">제작 범위는 <b>코어 루프</b>입니다. 전투 → 핀볼 보상 → 성장 → 재도전 한 사이클을 실제로 돌릴 수 있게 만들었습니다.</p>
+<h3>두 게임에서 가져온 것</h3>
+<div class="tbl"><table><thead><tr><th>가져온 곳</th><th>가져온 것</th><th>ZomXPit에서는</th></tr></thead><tbody>
+<tr><td>Ball x Pit</td><td>조작</td><td>보드 안을 직접 걸어 다니며 쏘고, 튕겨 돌아온 공을 몸으로 받아야 다시 쏠 수 있음</td></tr>
+<tr><td>Ball x Pit</td><td>플레이 시스템</td><td>좀비 대형이 밀고 내려오고, 중간 보스를 잡으면 보드가 넓어지며, 최종 보스로 마무리</td></tr>
+<tr><td>Ball x Pit</td><td>로그라이크</td><td>판마다 레벨업 카드로 볼을 키우고 Lv5끼리 융합·진화. 판이 끝나면 초기화</td></tr>
+<tr><td>뚜까펫 서바이벌</td><td>핀볼 수급</td><td>전투 보상이 핀볼. 머신에 쏴서 경험치(기본 스탯)와 잭팟(볼·캐릭터·핀볼)을 받음</td></tr>
+<tr><td>뚜까펫 서바이벌</td><td>캐릭터·성장</td><td>캐릭터는 조각으로 해금·강화, 볼은 중복 획득으로 강화. 재화는 핀볼 하나</td></tr>
+</tbody></table></div>
+<div class="tbl"><table><tbody>
+<tr><th>장르</th><td>로그라이크 핀볼 액션 (세로형)</td></tr>
+<tr><th>플랫폼</th><td>모바일 웹 (HTML5, 한 손 세로 화면)</td></tr>
+<tr><th>세계관</th><td>폐허 도시, 총 든 생존자 8명 vs 좀비 무리</td></tr>
+</tbody></table></div>
+<h3>나만의 관점</h3>
+<ul><li><b>전투와 성장이 같은 손맛을 공유합니다.</b> 전투도 핀볼도 "공이 튕기는 걸 지켜보는" 재미라, 두 시스템이 따로 노는 느낌 없이 이어집니다.</li>
+<li><b>재화는 핀볼 하나뿐입니다.</b> 무엇에 쓸지 고민하는 대신 "몇 개를 한 번에 쏠지"만 고르게 해서 메타를 가볍게 했습니다.</li>
+<li><b>모든 시간 단위를 짧게 잘랐습니다.</b> 한 판 약 2분, 핀볼 한 사이클 약 9초, 결과 화면은 버튼 하나로 로비 복귀.</li></ul>`,
+
+fun: `<span class="eyebrow">PRD ① 재미 가설 / 목표</span><h2>가볍게 즐기는 Ball x Pit식 전투에 핀볼 성장을 얹으면, 두 재미가 자연스럽게 맞물려 더 재미있어질까?</h2>
+<div class="cards">
+<div class="card"><span class="pill keep">핵심 재미 1</span><b>두 장르의 조합</b><span>Ball x Pit의 조작·플레이 시스템·로그라이크 형식으로 싸우고, 뚜까펫처럼 핀볼을 통해 캐릭터와 성장 재화를 얻습니다. 전투에서 번 핀볼이 곧 성장이 되고, 성장한 만큼 다음 전투가 쉬워집니다.</span></div>
+<div class="card"><span class="pill pink">핵심 재미 2</span><b>가볍고 빠르게</b><span>한 판 약 2분, 한 손 세로 조작, 핀볼은 PUSH를 누르고 있으면 끝. 짧은 틈에 한 판 하고, 핀볼 한 번 쏘고 나올 수 있는 로그라이크 핀볼 액션입니다.</span></div>
+</div>
+<h3>재미가 생기는 지점</h3>
+<ul><li><b>전투 (Ball x Pit)</b>: 다양한 볼을 조합해 몰려오는 좀비 무리를 한꺼번에 날려버리는 쾌감이 있습니다. 좀비와 보스는 종류마다 패턴이 달라서, 상대에 맞춰 위치와 볼 조합을 바꿔 대처해야 합니다.</li>
+<li><b>보상 (뚜까펫)</b>: 보상을 숫자가 아니라 핀볼로 줘서, 떨어지는 동안 잭팟 칸을 응원하게 합니다. 패배해도 핀볼을 주니 "한 판 더"가 자연스럽습니다.</li>
+<li><b>연결</b>: 핀볼 경험치로 기본 스탯이 오르고, 잭팟으로 볼·캐릭터가 늘어서 다음 판에 바로 체감됩니다.</li></ul>
+<h3>목표 경험</h3>
+<p>새 유저가 첫 10분 안에 전투 1판 → 핀볼 쏘기 → 새 볼 장착 → 재도전을 한 바퀴 돌고, 재도전에서 더 강해진 것을 체감한다.</p>`,
+
+loop: `<span class="eyebrow">PRD ② 핵심 메커니즘</span><h2>규칙, 조작, 승패, 진행 흐름</h2>
+${LOOP_SVG}
+<h3>규칙</h3>
+<ul><li>보드 아래 70%를 자유롭게 움직이며, 장착한 볼을 쏩니다(최대 8종).</li>
+<li>공은 벽·좀비에 튕기며 피해를 주고, 바닥이나 몸에 닿으면 회수됩니다. <b>회수한 공만 다시 쏠 수 있습니다.</b></li>
+<li>좀비는 대형을 이뤄 내려오고, 죽으면 경험치 보석을 떨어뜨립니다. 직접 닿아야 먹습니다.</li>
+<li>레벨업하면 카드 3장 중 1장: 새 볼 / 볼 Lv+1 / Lv5 볼 두 개 융합(한 볼이 여러 기능).</li></ul>
+<h3>조작</h3>
+<ul><li><b>좌우 스틱(기본)</b>: 왼쪽 스틱으로 이동, 오른쪽 스틱으로 조준.</li>
+<li><b>탭 조준</b>: 가운데 스틱으로 이동, 보드를 탭해 조준 각도를 정함. 설정에서 선택.</li>
+<li>핀볼 머신: 배율을 고르고 PUSH를 누르고 있으면 한 사이클에 최대 20발.</li></ul>
+<h3>승패 / 성공 조건</h3>
+<ul><li><b>승리</b>: 웨이브를 버티고 최종 보스 처치 → 다음 레벨 해금</li>
+<li><b>패배</b>: HP 0</li>
+<li>중간 보스를 잡으면 좁던 보드가 넓어집니다.</li>
+<li>승패 모두 핀볼을 받습니다. 판 안 볼 레벨은 판이 끝나면 사라집니다.</li></ul>
+<h3>진행 흐름</h3>
+<ol><li>로비에서 장착 볼 중 2개를 골라 출전</li><li>전투: 웨이브 → 중간 보스 → 최종 보스</li><li>결과: 핀볼 획득</li><li>핀볼 머신: 경험치(기본 스탯 상승) 또는 잭팟(볼·캐릭터·핀볼)</li><li>강해진 상태로 재도전</li></ol>`,
+
+balance: `<span class="eyebrow">PRD ③ 밸런싱 / 수치 설계</span><h2>난이도 곡선, 주요 파라미터, 보상 구조</h2>
+<p class="lead"><b>설계 의도</b>: 레벨 2까지는 기본 상태로도 무난하게 깨고, 레벨 3부터는 핀볼로 성장해야 수월하게 진행되도록 설계했습니다. 초반 두 레벨은 조작과 "공이 돌아와야 다시 쏜다"는 규칙을 익히는 구간이고, 레벨 3에서 처음으로 핀볼 머신에 들러 스탯과 볼을 키워 오도록 유도합니다.</p>
+<h3>난이도 곡선 (레벨 10개)</h3>
+<div class="tbl"><table><thead><tr><th>구간</th><th class="num">몬스터 HP 배율</th><th class="num">받는 피해 배율</th><th class="num">웨이브</th><th>새로 나오는 적</th></tr></thead><tbody>
+<tr><td>L1~4 입문</td><td class="num">0.80 → 1.58</td><td class="num">0.6 → 0.9</td><td class="num">4~5</td><td>기어오는 · 군인 · 방패 경찰</td></tr>
+<tr><td>L5~9 성장</td><td class="num">1.84 → 2.91</td><td class="num">1.25 → 1.5</td><td class="num">6</td><td>간호사 · 폭탄 조끼</td></tr>
+<tr><td>L10 마지막 벽</td><td class="num">2.3</td><td class="num">1.0</td><td class="num">7</td><td>화염방사 · 전종 섞임</td></tr></tbody></table></div>
+<p class="note">한 판 길이는 약 2분 20초. 처음 4분 20초였으나 "호흡이 너무 길다"는 판단으로 웨이브 길이를 절반으로 줄였습니다.</p>
+<h3>주요 파라미터</h3>
+<div class="tbl"><table><thead><tr><th>파라미터</th><th class="num">값</th><th>의도</th></tr></thead><tbody>
+<tr><td>볼 최대 레벨 / 장착 수</td><td class="num">Lv5 / 8종</td><td>Lv5 두 개를 합쳐야 다음 단계</td></tr>
+<tr><td>이동 속도</td><td class="num">초기값의 60%</td><td>공을 받으러 가는 판단에 무게를 둠</td></tr>
+<tr><td>핀볼 사이클</td><td class="num">최대 20발</td><td>10발은 "맛이 없어서" 20발로</td></tr>
+<tr><td>배율</td><td class="num">×1 · 2 · 3 · 5 · 10</td><td>공 1개가 핀볼 N개를 쓰고 보상도 ×N</td></tr>
+<tr><td>볼 강화 (영구)</td><td class="num">Lv n→n+1에 사본 n장</td><td>골드 없이 중복 획득으로 강화</td></tr>
+<tr><td>캐릭터 해금</td><td class="num">조각 10개</td><td>잭팟에서 조각을 모아 해금</td></tr></tbody></table></div>
+<h3>보상 구조</h3>
+<ul><li><b>레벨 보상</b>: 첫 클리어 핀볼 20 + 2 × 레벨, 재도전·실패 8 + 레벨</li>
+<li><b>핀볼 머신 칸</b>: 경험치 칸 96% · 잭팟 4%</li>
+<li><b>잭팟 슬롯머신</b>: 릴 3개(볼 / 캐릭터 조각 / 핀볼)를 모두 지급. 3개가 같으면 상위 보상(희귀 볼, 캐릭터 통째로, 핀볼 ×10)</li>
+<li><b>자동 사냥</b>: 접속하지 않은 동안 핀볼 적립, 최대 8시간</li>
+<li><b>침략</b>: 다른 유저(가상) 캐릭터와 60초 대결. 이기면 살려주기(핀볼) 또는 처치(랜덤 볼 1개). 침략권 5장, 30분마다 1장 충전</li></ul>`,
+
+scope: `<span class="eyebrow">PRD ④ 범위 정의</span><h2>이번에 만드는 것 / 만들지 않는 것</h2>
+<div class="tbl"><table><thead><tr><th>만드는 것</th><th>만들지 않는 것</th></tr></thead><tbody>
+<tr><td>전투: 좀비 7종, 보스 10종(중간 5 · 최종 5), 레벨 10개</td><td>서버·계정 (브라우저에만 저장)</td></tr>
+<tr><td>볼 30종, 판 안 융합</td><td>실제 유저 PvP (침략 상대는 가상 유저)</td></tr>
+<tr><td>핀볼 머신 + 잭팟 슬롯머신</td><td>결제·광고·상점</td></tr>
+<tr><td>영구 성장: 플레이어 레벨, 볼 레벨, 캐릭터 8명</td><td>시즌·이벤트·퀘스트</td></tr>
+<tr><td>로비, 자동 사냥, 침략 + 아레나</td><td>네이티브 앱 (웹 + 홈 화면 추가로 대체)</td></tr>
+<tr><td>튜토리얼, 조작 2종, 설정</td><td></td></tr></tbody></table></div>`,
+
+success: `<span class="eyebrow">PRD ⑤ 성공 기준</span><h2>이 게임을 계속 개발해, 실제 라이브 서비스할 만한 게임으로 키울 재미가 있는가?</h2>
+<p class="lead">이 게임은 과제 제출에서 끝나지 않고, 실제 라이브 서비스로 이어질 만한 재미가 있는지를 고민하며 만들었습니다. 아래 세 가지가 충족되면, 바로 라이브로 가기는 어렵더라도 게임으로서의 재미는 충분하다고 판단합니다.</p>
+<h3>판단 근거</h3>
+<div class="tbl"><table><thead><tr><th>기준</th><th>확인 질문</th></tr></thead><tbody>
+<tr><td>게임의 진행이 자연스럽게 하나의 루프로 느껴지는가</td><td>처음 시작한 유저가 어렵지 않게 접근해서 재미를 느낄 수 있는가?</td></tr>
+<tr><td>다시 한 번 플레이하고 싶은가</td><td>게임의 다음이 궁금하고, 콘텐츠를 더 경험하고 싶어지는가?</td></tr>
+<tr><td>더 성장하기 위해 다양한 행동을 하고 싶어지는가</td><td>핀볼 성장, BM, 광고 시청 등을 감수할 만큼 성장 욕구가 생기는가?</td></tr></tbody></table></div>`,
+
+decisions: `<span class="eyebrow">AI 활용 ② 채택 / 미채택과 이유</span><h2>그대로 쓴 것, 고친 것, 버린 것</h2>
+<p class="lead">AI의 제안은 세 가지 기준으로 걸렀습니다. <b>핵심 재미(쏘고 받는 전투, 핀볼 성장)에 힘을 보태는가</b>, <b>가볍고 빠른 플레이를 해치지 않는가</b>, <b>혼자 만들고 고칠 수 있는 범위인가</b>. 표의 "의도"는 각 결정으로 만들고 싶었던 플레이 경험입니다.</p>
+<div class="tbl"><table><thead><tr><th>AI 제안 / 초안</th><th>결정</th><th>이유</th><th>의도</th></tr></thead><tbody>
+<tr><td>하단에 서서 위로 쏘는 고정 사격</td><td><span class="pill mod">수정</span></td><td>Ball x Pit은 보드 안을 직접 걸어 다니며 몬스터 옆까지 간다. 상위 30%만 남기고 이동 가능하게.</td><td>위치 선정 자체를 플레이로 만들기. 피할지, 공을 받으러 갈지, 다가가 때릴지를 계속 판단하게.</td></tr>
+<tr><td>공 종류마다 계속 쏘는 구조</td><td><span class="pill mod">수정</span></td><td>"공은 항상 플레이어에게 돌아온 뒤 다시 나간다." 회수가 곧 공격력이 되도록.</td><td>쏘고 받는 리듬에서 손맛과 긴장이 생기도록.</td></tr>
+<tr><td>처음부터 넓은 맵</td><td><span class="pill mod">수정</span></td><td>"지금은 공간이 너무 넓어." 좁게 시작해 중간 보스를 잡으면 넓어지게.</td><td>한 판 안에서도 공간이 열리는 성장감을 주기 위해.</td></tr>
+<tr><td>경험치 즉시 획득</td><td><span class="pill mod">수정</span></td><td>아이템으로 떨어뜨리고 직접 닿아 먹게. 움직일 이유를 하나 더 만듦.</td><td>위험을 감수하고 주우러 가는 선택을 만들기.</td></tr>
+<tr><td>고블린 주인공</td><td><span class="pill drop">폐기</span></td><td>주인공 톤이 게임 분위기와 맞지 않아 귀여운 아기 해골로.</td><td>첫인상에서 캐릭터에 호감이 가도록.</td></tr>
+<tr><td>흩어져 내려오는 몬스터</td><td><span class="pill mod">수정</span></td><td>Ball x Pit처럼 정렬된 군단 대형으로 내려오게.</td><td>밀집한 무리를 한 번에 쓸어버리는 쾌감, 볼 조합이 빛나는 상황을 만들기.</td></tr>
+<tr><td>움직이는 성 컨셉 + 2.5D 아트 + 성 시안 6종</td><td><span class="pill drop">아트 폐기</span> <span class="pill keep">침략 채택</span></td><td>성 아트가 의도한 톤과 달라, 아트는 픽셀로 되돌리고 다른 유저를 침략하는 시스템만 남김.</td><td>아트 비용 대비 효과가 낮은 부분은 덜고, 다른 유저를 이긴다는 동기는 살리기.</td></tr>
+<tr><td>UI를 지금 다듬을지 (AI: 나중에)</td><td><span class="pill keep">채택</span></td><td>화면 구조가 아직 바뀌는 중이라 지금 다듬으면 다시 깨짐.</td><td>구조가 확정되기 전에 폴리싱 비용을 쓰지 않기.</td></tr>
+<tr><td>장비 6부위 + 골드 강화</td><td><span class="pill drop">폐기</span></td><td>재화 흐름을 "핀볼 → 스탯 → 잭팟 → 볼·캐릭터" 하나로 줄이기 위해. 장비 대신 볼 8종 장착.</td><td>재화를 하나로 묶어 루프를 가볍게.</td></tr>
+<tr><td>골드 재화</td><td><span class="pill drop">폐기</span></td><td>"골드는 지금 필요하지 않은 듯." 볼 강화는 중복 사본으로, 모든 보상은 핀볼로.</td><td>재화를 하나로 묶어 루프를 가볍게.</td></tr>
+<tr><td>핀볼 보상 결과 팝업</td><td><span class="pill drop">폐기</span></td><td>들어가는 족족 경험치 아이콘이 바로 날아가게 (뚜까펫 방식).</td><td>보상을 받는 순간의 손맛이 팝업으로 끊기지 않게.</td></tr>
+<tr><td>핀볼 한 사이클 10발</td><td><span class="pill mod">수정</span></td><td>"10개 뭔가 맛이 없네, 20개로 하자."</td><td>한 사이클에 보상을 받는 감각이 충분하도록.</td></tr>
+<tr><td>레벨 목록 화면</td><td><span class="pill drop">폐기</span></td><td>굳이 보여 줄 필요 없음. 진입 시 공 2개 선택, 레벨 1은 바로 시작.</td><td>게임에 들어가기까지의 탭 수를 줄이기.</td></tr>
+<tr><td>한 판 약 4분 20초</td><td><span class="pill mod">수정</span></td><td>"레벨 플레이 호흡이 너무 길다." 약 2분 20초로.</td><td>짧은 틈에 한 판 하는 가벼운 세션.</td></tr>
+<tr><td>원래 컨셉: 내가 몬스터, 몰려오는 용사를 잡는다</td><td><span class="pill mod">수정</span></td><td>"나는 사람이고, 몬스터는 좀비들로." 아트 퀄리티를 올리며 세계관 교체.</td><td>사람 vs 좀비라는 한눈에 이해되는 대립 구도.</td></tr>
+<tr><td>아트 3안: 코드 픽셀 / 벡터 카툰 / 이미지 생성</td><td><span class="pill keep">픽셀 채택</span></td><td>파일 하나로 빠르게 고칠 수 있음. 이미지 생성은 서비스 잔액 부족으로 실패.</td><td>혼자서도 빠르게 고치고 반복할 수 있는 제작 속도.</td></tr>
+<tr><td>거북 주인공 (등딱지에 대포)</td><td><span class="pill drop">폐기</span></td><td>크게 키우면 등딱지가 네모 덩어리로 깨짐. 엔터 더 건전을 참고한 총 든 사람 8명으로, 기본은 소녀.</td><td>여러 명을 모으는 캐릭터 수집으로 확장할 수 있게.</td></tr>
+<tr><td>4족 보행 좀비 개</td><td><span class="pill drop">폐기</span></td><td>혼자 옆모습이라 어색함. "안되겠다 기어오는 좀비로 하자."</td><td>화면의 시점을 통일해 비주얼이 어색하지 않게.</td></tr>
+<tr><td>좀비 사망 폭발 아이템 (피해 100~200%)</td><td><span class="pill mod">하향</span></td><td>"주변 좀비들이 나오자마자 다 죽어버려." 피해를 줄이고 연쇄 폭발을 막음.</td><td>빌드는 강해져도 화면이 한순간에 비어 긴장이 사라지지 않게.</td></tr>
+<tr><td>침략 보상 하향</td><td><span class="pill drop">거절</span></td><td>"침략 보상은 낮추지 말고." 대신 침략권으로 무한 반복만 막음.</td><td>침략의 동기는 지키고, 반복은 횟수로 조절하기.</td></tr>
+<tr><td>수동 조작 4안 (AI 제안)</td><td><span class="pill keep">2안 채택</span></td><td>좌우 스틱 / 탭 조준을 설정에서 고르게.</td><td>손에 맞는 조작을 고를 수 있게.</td></tr>
+<tr><td>화염방사 좀비가 불 웅덩이를 만듦</td><td><span class="pill mod">수정</span></td><td>"왜 불을 안 뿜어." 일직선 화염으로, 웅덩이는 독 뿜는 좀비로 분리.</td><td>이름 그대로 행동해서 패턴을 예측하고 대처할 수 있게.</td></tr>
+<tr><td>방패 좀비가 정면 공에 일부 피해</td><td><span class="pill mod">수정</span></td><td>정면 공은 무조건 막음. 컨셉이 다른 좀비는 방패를 들지 않게.</td><td>규칙이 명확해야 유저가 대처법을 배울 수 있음.</td></tr>
+<tr><td>잭팟 보상 아래 확률 표기</td><td><span class="pill drop">폐기</span></td><td>"각 보상 하단에 확률 나오는 거 지워."</td><td>화면을 가볍게 두고 잭팟의 기대감은 남기기.</td></tr>
+<tr><td>침략 상대 목록</td><td><span class="pill mod">수정</span></td><td>클래시 로얄 아레나처럼 별도 탭으로, 아레나를 뚫을 때마다 새 볼 해금.</td><td>장기 목표와 새 볼 해금이라는 다음 판의 동기를 만들기.</td></tr></tbody></table></div>`,
+
+log: `<span class="eyebrow">AI 활용 ① 대화 내용과 활용 내역</span><h2>방향을 바꾼 프롬프트들</h2>
+<h3>사용한 툴</h3>
+<ul><li><b>Claude Code</b>: 기획 구체화, 코드, 도트 아트, 사운드, 수치, 디버깅까지 전 단계</li>
+<li><b>이미지 생성 (나노바나나)</b>: 아트 방향 시안으로 시도, 잔액 부족으로 실패</li></ul>
+<h3>주요 프롬프트 원문</h3>
+<div style="display:grid;gap:10px">
+<div class="prompt"><time>10/12</time><q>ballxpit의 시스템에 대해 상세하게 분석해줘. 나는 결과적으로 html5로 ballxpit 같은 게임을 만들고 싶어. ballxPit의 전투 시스템에 여러가지 다른 요소를 결합하고 싶어.</q><span class="so">→ 시스템 분석 + 첫 프로토타입</span></div>
+<div class="prompt"><time>10/12</time><q>ballxpit은 보드 안에서 직접 조작하는 방식이고, 몬스터 바로 옆에까지 걸어갈 수도 있어(맵 내의 상위 30%를 남기고 걸어갈 수 있다고 보면됨)</q><span class="so">→ 이동 구조 변경</span></div>
+<div class="prompt"><time>10/12</time><q>공은 항상 플레이어에게 돌아온 뒤 다시 나가는거야. 만약 공이 발사되어있는 상황이면 플레이어는 새로운 공을 발사할 수 없어</q><span class="so">→ 핵심 재미 가설이 된 규칙</span></div>
+<div class="prompt"><time>10/12</time><q>볼핏에는 공간이 점점 열리는 효과가 있어. 처음에는 약간 좁은 곳에서 시작했다가 점점 넓어져. … 중간보스 1마리를 처치하면 공간이 넓어지는 식으로 하자.</q><span class="so">→ 보드 확장</span></div>
+<div class="prompt"><time>10/12</time><q>ball pit 스샷이나 이런걸 참고하면 정렬되서 뭉쳐지고 군단같이 내려오거든</q><span class="so">→ 군단 대형</span></div>
+<div class="prompt"><time>10/12</time><q>추후 만들 로비에서 버튼을 왼쪽 오른쪽 나눠서 일반 레벨 플레이, 다른 몬스터 성 침략으로 나눠서 실제 유저(일단 봇 데이터)를 침략하는거야.</q><span class="so">→ 침략 모드의 시작</span></div>
+<div class="prompt"><time>10/13</time><q>그리고 레벨 플레이 호흡이 너무 길다. 호흡을 좀 줄여야할 것 같아</q><span class="so">→ 한 판 2분 20초</span></div>
+<div class="prompt"><time>10/13</time><q>장비는 제거하자 … 재화 플로우가 이렇게 되는거야. 게임 플레이로 핀볼 획득 - 획득한 핀볼로 기본 스탯 상승 - 잭팟으로 인해 볼과 캐릭터 조각 획득 - 레벨 or 플레이어 공격.</q><span class="so">→ 메타 루프 재설계</span></div>
+<div class="prompt"><time>10/13</time><q>배율이라는건, 핀볼 1개에 x10 의 보상을 지급하는거야. 즉, 날아가는 핀볼 공은 1개지만, 실제로 10개가 소비되고 x10의 보상을 주는거지</q><span class="so">→ 배율 시스템</span></div>
+<div class="prompt"><time>10/13</time><q>핀볼 보상을 팝업으로 주지 말고, 경험치는 들어가는 족족 바로 나와서 xp 1개당 아이콘 1개씩 경험치 바로 날아가고(뚜까펫처럼) 잭팟에 들어간 핀볼이 있다면, 핀볼의 사이클이 끝날때까지 대기하다가 끝나면 연출과 함께 나와줘</q><span class="so">→ 핀볼 보상 연출</span></div>
+<div class="prompt"><time>10/14</time><q>볼 강화는 볼 중첩 뽑기로 어느정도 되면 강화할 수 있게 하자. 골드는 지금 필요하지 않은듯...</q><span class="so">→ 골드 폐지</span></div>
+<div class="prompt"><time>10/14</time><q>침략 보상은 낮추지말고, 일정 쿨타임마다 침략할 수 있는 재화를 줘서 침략을 무한으로 할 수 없게 하자.</q><span class="so">→ 침략권</span></div>
+<div class="prompt"><time>10/14</time><q>거북이는 이렇게 되면 깨져보일 것 같은데 … 총든 사람으로 해야겠는데 캐릭터를 enter the gungeon 참고해서 사람도 몇가지 시안 내볼래?</q><span class="so">→ 생존자 8명, 기본 소녀</span></div>
+<div class="prompt"><time>10/16</time><q>침략을 하단 네비게이션 바로 놓고 페이지를 따로 쓰자. 클래시 로얄 아레나 같은 느낌으로 가고, 각 아레나를 뚫을 때, 새로운 공 종류가 해금되는 이런 식으로.</q><span class="so">→ 아레나</span></div>
+</div>
+<h3>대화 원문 전체</h3>
+<div class="cards">
+<button class="card logbtn" type="button" data-log="a"><b>원문 ① 10/12 ~ 10/14</b><span>Ball x Pit 분석부터 골드 폐지까지. Claude Code 세션 기록 (대화 압축 때문에 일부 구간이 반복됨)</span></button>
+<button class="card logbtn" type="button" data-log="b"><b>원문 ② 10/14 ~ 10/16</b><span>좀비 세계관 전환부터 아레나까지. 세션 3개, 도구 호출과 코드는 생략</span></button>
+</div>`,
+log_a: `<span class="eyebrow">AI 대화 원문 ①</span><h2>10/12 ~ 10/14</h2>${'<div class="logview" data-src="logs/session-ballxpit.md"></div>'}`,
+log_b: `<span class="eyebrow">AI 대화 원문 ②</span><h2>10/14 ~ 10/16</h2>${'<div class="logview" data-src="logs/ai-log.txt"></div>'}`,
+
+run: `<span class="eyebrow">결과물 실행 방법</span><h2>링크 하나로 실행됩니다</h2>
+<div class="btns"><a class="btn play" href="https://katonea.github.io/zomxpit/" target="_blank" rel="noopener">▶ katonea.github.io/zomxpit</a></div>
+<ol><li>폰(권장) 또는 PC 브라우저에서 위 주소를 엽니다. 폰에서는 브라우저 메뉴 → "홈 화면에 추가"로 전체 화면 실행.</li>
+<li>첫 실행은 레벨 1(튜토리얼)로 바로 들어갑니다.</li>
+<li>결과 화면 → 로비 → 핀볼 탭에서 PUSH. 첫 핀볼은 잭팟이 확정입니다.</li>
+<li>볼 탭에서 새 볼을 장착하고 다시 출전하면 한 사이클 완료.</li></ol>
+<p class="note">진동은 안드로이드 크롬에서만 동작합니다.</p>`
+};
+
+const bg = document.getElementById('sheetBg'), body = document.getElementById('sheetBody');
+let lastFocus = null;
+function openSheet(id) {
+  if (!S[id]) return;
+  lastFocus = document.activeElement;
+  body.innerHTML = S[id];
+  const h = body.querySelector('h2'); if (h) h.id = 'sheetTitle';
+  const lv = body.querySelector('.logview'); if (lv) initLog(lv);
+  bg.hidden = false; bg.scrollTop = 0; document.body.style.overflow = 'hidden';
+  document.getElementById('closeBtn').focus();
+  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+}
+function closeSheet() {
+  bg.hidden = true; document.body.style.overflow = '';
+  history.replaceState(null, '', location.pathname + location.search);
+  if (lastFocus) lastFocus.focus();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-open]'); if (t) { openSheet(t.dataset.open); return; }
+  const l = e.target.closest('[data-log]'); if (l) openSheet('log_' + l.dataset.log);
+});
+
+/* chat log viewer: splits the raw transcript into messages, filters by text and by "my messages only" */
+const LOGS = {};
+function parseLog(src, text) {
+  const out = [];
+  if (src.endsWith('.md')) {
+    for (const part of text.split(/\n(?=## (?:user|assistant) {2}_)/)) {
+      const m = part.match(/^## (user|assistant) {2}_([^_]+)_\s*\n?/);
+      if (!m) { if (part.trim()) out.push({role: 'sys', who: '', text: part.trim()}); continue; }
+      const t = new Date(m[2]), body = part.slice(m[0].length).trim();
+      const kst = isNaN(t) ? m[2] : new Date(t.getTime() + 9 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
+      const sys = m[1] === 'user' && /^(This session is being continued|<task-notification>|\[Request interrupted)/.test(body);
+      out.push({role: sys ? 'sys' : (m[1] === 'user' ? 'user' : 'ai'), who: (m[1] === 'user' ? '나' : 'Claude') + ' · ' + kst, text: body});
+    }
+  } else {
+    let day = '';
+    for (const part of text.split(/\n(?=\[\d\d:\d\d\] (?:사용자|Claude):|={20,}|-{20,})/)) {
+      const p = part.trim(); if (!p) continue;
+      const d = p.match(/■\s*([^\n]+)/); if (/^={20,}/.test(p)) { if (d) { day = d[1].trim(); out.push({role: 'head', who: '', text: day}); } continue; }
+      if (/^-{20,}/.test(p)) { const s = p.replace(/-{20,}/g, '').trim(); if (s) out.push({role: 'sys', who: '', text: s}); continue; }
+      const m = p.match(/^\[(\d\d:\d\d)\] (사용자|Claude):\s*\n?/);
+      if (!m) { out.push({role: 'sys', who: '', text: p}); continue; }
+      out.push({role: m[2] === '사용자' ? 'user' : 'ai', who: (m[2] === '사용자' ? '나' : 'Claude') + ' · ' + m[1], text: p.slice(m[0].length).trim()});
+    }
+  }
+  return out;
+}
+function initLog(el) {
+  const src = el.dataset.src;
+  el.innerHTML = '<div class="logtools"><input type="search" id="logq" placeholder="대화에서 찾기 (예: 방패, 잭팟)" aria-label="대화에서 찾기"><label><input type="checkbox" id="logme"> 내 메시지만</label><span class="cnt" id="logcnt">불러오는 중…</span></div><div class="msgs" id="logmsgs"></div>';
+  const q = el.querySelector('#logq'), me = el.querySelector('#logme'), cnt = el.querySelector('#logcnt'), box = el.querySelector('#logmsgs');
+  let shown = 150;
+  const render = () => {
+    const all = LOGS[src] || [], term = q.value.trim().toLowerCase();
+    const list = all.filter(m => (!me.checked || m.role === 'user') && (!term || m.text.toLowerCase().includes(term)));
+    box.textContent = '';
+    for (const m of list.slice(0, shown)) {
+      const d = document.createElement('div'); d.className = 'msg ' + m.role;
+      if (m.who) { const w = document.createElement('span'); w.className = 'who'; w.textContent = m.who; d.appendChild(w); }
+      d.appendChild(document.createTextNode(m.text)); box.appendChild(d);
+    }
+    cnt.textContent = list.length + '개 중 ' + Math.min(shown, list.length) + '개 표시';
+    if (list.length > shown) { const b = document.createElement('button'); b.type = 'button'; b.className = 'more-btn'; b.textContent = '더 보기'; b.onclick = () => { shown += 300; render(); }; box.appendChild(b); }
+  };
+  q.addEventListener('input', () => { shown = 150; render(); });
+  me.addEventListener('change', () => { shown = 150; render(); });
+  if (LOGS[src]) { render(); return; }
+  fetch(src).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(t => { LOGS[src] = parseLog(src, t); render(); })
+    .catch(() => { cnt.textContent = '원문 파일을 불러오지 못했습니다. 새로고침해 주세요.'; });
+}
+document.getElementById('closeBtn').addEventListener('click', closeSheet);
+bg.addEventListener('click', e => { if (e.target === bg) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !bg.hidden) closeSheet(); });
+const h0 = location.hash.slice(1); if (S[h0]) openSheet(h0);
+
+</script>
+<script>
+/* Hero preview: a code-drawn pixel loop (no video). 135x240 logical px, scaled up with pixelated rendering.
+   Scene A = Ball x Pit style battle (balls return to the girl before refiring). Scene B = pinball machine payout. */
+(() => {
+  const cv = document.getElementById('demo'); if (!cv) return;
+  const cap = document.getElementById('demoCap');
+  const W = 135, H = 240; cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const rect = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, w, h); };
+
+  const PAL = { k:'#2a2a1e', g:'#7ec84a', G:'#5f9e38', e:'#3a0d0d', b:'#5d7186', d:'#33384a', n:'#1f2a55',
+    l:'#8fc6ef', w:'#e8f4ff', h:'#6b3d22', s:'#f1c9a5', p:'#f06aa8', P:'#c94a86', m:'#8a8a96' };
+  const SPR = {
+    zom: ['..kkkk..','.kggggk.','.geggeg.','.gggggg.','..gGGg..','.bbbbbb.','gbbbbbbg','.bb..bb.','.dd..dd.'],
+    cop: ['..nnnn..','.nnnnnn.','.geggeg.','.gggggg.','llllllll','lwwwwwwl','llllllll','.nn..nn.','.nn..nn.'],
+    girl:['..hhhh..','.hhhhhh.','.hhsshh.','..ssss.m','.ppppppm','pppppps.','sPppppP.','.pp..pp.','.kk..kk.']
+  };
+  const sprite = (s, x, y, flash) => {
+    for (let r = 0; r < s.length; r++) for (let i = 0; i < 8; i++) {
+      const ch = s[r][i]; if (ch === '.') continue;
+      rect(x + i, y + r, 1, 1, flash ? '#ffffff' : PAL[ch]);
+    }
+  };
+
+  /* ---------- static backdrop for the battle, drawn once ---------- */
+  const AX0 = 15, AX1 = 120, AY0 = 13, AY1 = 183;
+  const bgA = document.createElement('canvas'); bgA.width = W; bgA.height = H;
+  (() => {
+    const b = bgA.getContext('2d'); const f = (x, y, w, h, col) => { b.fillStyle = col; b.fillRect(x, y, w, h); };
+    f(0, 0, W, H, '#4b3b30');
+    for (let i = 0; i < 260; i++) f(R(AX0, AX1) | 0, R(AY0, AY1) | 0, 1, 1, ['#5a4638', '#3e3027', '#7a4434'][i % 3]);
+    for (let i = 0; i < 6; i++) { const x = R(AX0 + 6, AX1 - 6) | 0, y = R(AY0 + 10, AY1 - 10) | 0; f(x, y, 3, 3, '#2e2420'); f(x + 1, y + 1, 1, 1, '#1d1714'); }
+    for (const x0 of [0, AX1 + 1]) {                        // brick side walls
+      f(x0, AY0, 14, AY1 - AY0, '#3b1c18');
+      for (let y = AY0, row = 0; y < AY1; y += 4, row++)
+        for (let x = x0 - (row % 2 ? 3 : 0); x < x0 + 14; x += 6) {
+          const cx = Math.max(x, x0), w = Math.min(x + 5, x0 + 14) - cx;
+          if (w > 0) f(cx, y, w, 3, ['#8e3b2c', '#7a3326', '#9a4433'][(row + x) % 3]);
+        }
+      f(x0 === 0 ? 14 : x0 - 1, AY0, 1, AY1 - AY0, '#6b5a48');
+    }
+    f(0, AY1, W, 35, '#2a2433');                              // chain-link fence base
+    b.strokeStyle = '#5c5a6a'; b.lineWidth = 1;
+    for (let x = -40; x < W + 40; x += 6) {
+      b.beginPath(); b.moveTo(x, AY1); b.lineTo(x + 35, AY1 + 35); b.stroke();
+      b.beginPath(); b.moveTo(x + 35, AY1); b.lineTo(x, AY1 + 35); b.stroke();
+    }
+    f(0, AY1, W, 2, '#8a8896');
+    for (let x = 8; x < W; x += 34) f(x, AY1, 3, 35, '#8a8896');
+    b.strokeStyle = '#4a5a8a'; [[28, 200], [107, 200]].forEach(([x, y]) => { b.beginPath(); b.arc(x, y, 12, 0, 7); b.stroke(); f(x - 4, y - 4, 8, 8, '#6c7aa0'); });
+    f(0, 218, W, 22, '#1e1640');                              // ball slot row
+    const icon = ['#ff6fb0', '#c79bff', '#b48cff'];
+    for (let i = 0; i < 8; i++) {
+      const x = 2 + i * 16.5 | 0; f(x, 220, 15, 18, '#3c2c78'); f(x + 1, 221, 13, 16, '#4b3a90');
+      if (icon[i]) { b.fillStyle = icon[i]; b.beginPath(); b.arc(x + 7.5, 228, 4, 0, 7); b.fill(); f(x + 3, 234, 9, 1, '#ffd84a'); }
+    }
+  })();
+
+  /* ---------- battle state ---------- */
+  let zs, balls, splats, bits, hero, xp, hp, fireT, rowT;
+  const BALLC = ['#f4f0ff', '#ffd84a', '#ff8fc8', '#c79bff', '#f4f0ff'];
+  function spawnRow(y) {
+    const n = 5 + (Math.random() * 2 | 0), gap = 12, x0 = (W - (n * gap - 4)) / 2;
+    for (let i = 0; i < n; i++) {
+      const cop = Math.random() < .22;
+      zs.push({ x: x0 + i * gap + R(-1, 1), y: y + R(-1, 1), hp: cop ? 4 : 2, cop, f: 0 });
+    }
+  }
+  function resetA() {
+    zs = []; balls = []; splats = []; bits = []; xp = .2; hp = .92; fireT = 0; rowT = 0;
+    hero = { x: 63, y: 160, t: 0 };
+    for (let r = 0; r < 4; r++) spawnRow(AY0 + 4 + r * 13);
+    for (let i = 0; i < 5; i++) balls.push({ held: true });
+  }
+  function stepA(dt) {
+    hero.t += dt;
+    const front = zs.reduce((a, z) => z.y > (a ? a.y : -1) ? z : a, null);
+    const tx = (front ? front.x : 63) + Math.sin(hero.t * 1.3) * 18;
+    hero.x += Math.max(-40 * dt, Math.min(40 * dt, tx - hero.x));
+    hero.x = Math.max(AX0 + 1, Math.min(AX1 - 9, hero.x));
+    zs.forEach(z => { z.y += 3.2 * dt; if (z.f > 0) z.f -= dt; });
+    for (let i = zs.length - 1; i >= 0; i--) if (zs[i].y > hero.y - 12) { zs.splice(i, 1); hp = Math.max(.35, hp - .04); }
+    rowT += dt; if (rowT > 3.6 || zs.length < 12) { rowT = 0; spawnRow(AY0 + 2); }
+    fireT -= dt;
+    const ready = balls.find(b => b.held);
+    if (ready && fireT <= 0 && zs.length) {
+      const t = zs[Math.random() * zs.length | 0], sx = hero.x + 4, sy = hero.y;
+      const a = Math.atan2(t.y + 4 - sy, t.x + 4 - sx) + R(-.12, .12);
+      Object.assign(ready, { held: false, back: false, x: sx, y: sy, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, col: BALLC[balls.indexOf(ready)] });
+      fireT = .22;
+    }
+    balls.forEach(b => {
+      if (b.held) return;
+      if (b.back) {                                           // ball homes back to the girl, then can refire
+        const dx = hero.x + 4 - b.x, dy = hero.y + 4 - b.y, d = Math.hypot(dx, dy);
+        if (d < 4) { b.held = true; return; }
+        b.x += dx / d * 190 * dt; b.y += dy / d * 190 * dt; return;
+      }
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.x < AX0 + 1) { b.x = AX0 + 1; b.vx *= -1; }
+      if (b.x > AX1 - 2) { b.x = AX1 - 2; b.vx *= -1; }
+      if (b.y < AY0 + 1) { b.y = AY0 + 1; b.vy *= -1; }
+      if (b.vy > 0 && b.y > hero.y - 2) { b.back = true; return; }
+      for (const z of zs) if (b.x + 2 > z.x && b.x < z.x + 8 && b.y + 2 > z.y && b.y < z.y + 9) {
+        b.vy = -b.vy; b.vx += R(-25, 25); b.y += b.vy * dt * 2;
+        z.hp--; z.f = .08;
+        if (z.hp <= 0) {
+          zs.splice(zs.indexOf(z), 1); xp += .06; if (xp >= 1) xp = 0;
+          splats.push({ x: z.x + 1, y: z.y + 3, a: 1, p: Array.from({ length: 7 }, () => [R(0, 7) | 0, R(0, 5) | 0]) });
+          for (let i = 0; i < 6; i++) bits.push({ x: z.x + 4, y: z.y + 4, vx: R(-40, 40), vy: R(-50, 10), t: .4 });
+        }
+        break;
+      }
+    });
+    splats.forEach(s => s.a -= dt * .08); splats = splats.filter(s => s.a > 0).slice(-30);
+    bits.forEach(p => { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; }); bits = bits.filter(p => p.t > 0);
+  }
+  function drawA() {
+    c.drawImage(bgA, 0, 0);
+    splats.forEach(s => { c.globalAlpha = s.a * .8; s.p.forEach(([x, y]) => rect(s.x + x, s.y + y, 2, 1, '#6e1414')); });
+    c.globalAlpha = 1;
+    zs.slice().sort((a, b) => a.y - b.y).forEach(z => {
+      sprite(z.cop ? SPR.cop : SPR.zom, z.x, z.y, z.f > 0);
+      if (z.hp < (z.cop ? 4 : 2)) { rect(z.x, z.y - 2, 8, 1, '#3a0d0d'); rect(z.x, z.y - 2, 8 * z.hp / (z.cop ? 4 : 2), 1, '#e4383f'); }
+    });
+    sprite(SPR.girl, hero.x, hero.y, false);
+    balls.forEach(b => { if (!b.held) { rect(b.x, b.y, 2, 2, b.col); rect(b.x, b.y, 1, 1, '#ffffff'); } });
+    bits.forEach(p => rect(p.x, p.y, 1, 1, '#9fd86a'));
+    const held = balls.filter(b => b.held).length;           // balls waiting at the girl
+    for (let i = 0; i < held; i++) rect(hero.x - 1 + i * 2, hero.y + 10, 1, 1, '#ffd84a');
+    rect(0, 0, W, 12, '#2a1f4a');                              // HUD
+    rect(3, 2, 3, 3, '#ff6f8f'); rect(3, 7, 3, 3, '#6ab8ff');
+    rect(9, 3, 40, 2, '#4a1a26'); rect(9, 3, 40 * hp, 2, '#e4383f');
+    rect(9, 8, 40, 2, '#1c2c55'); rect(9, 8, 40 * xp, 2, '#4aa3ff');
+    rect(99, 3, 33, 6, '#3c2c78'); rect(100, 4, 31 * ((performance.now() / 9000) % 1), 4, '#ffd84a');
+  }
+
+  /* ---------- pinball machine ---------- */
+  const PX0 = 8, PX1 = 127, PY0 = 26, PY1 = 196, CX = 67.5, CY = 84, CR = 59.5;
+  const pegs = [], bumpers = [{ x: 40, y: 62, c: '#ff6fb0' }, { x: 67.5, y: 52, c: '#3a8cff' }, { x: 95, y: 62, c: '#3fd06a' }];
+  for (let r = 0; r < 9; r++) for (let x = 16 + (r % 2) * 6; x < 120; x += 12) pegs.push({ x, y: 80 + r * 9.5 });
+  const slots = [{ c: '#6ad0ff' }, { c: '#6ad0ff' }, { c: '#ff4a5a', jack: true }, { c: '#6ad0ff' }, { c: '#6ad0ff' }];
+  let pb, pf, pT, expv, bumpF, slotF, pushT;
+  function resetB() { pb = []; pf = []; pT = 0; expv = 0; bumpF = [0, 0, 0]; slotF = [0, 0, 0, 0, 0]; pushT = 0; }
+  const inside = (x, y) => y > CY ? x > PX0 + 4 && x < PX1 - 4 : Math.hypot(x - CX, y - CY) < CR - 4;
+  function stepB(dt) {
+    pT -= dt; pushT += dt;
+    if (pT <= 0) { pb.push({ x: CX + R(-34, 34), y: 40, vx: R(-30, 30), vy: 0 }); pT = .16; }
+    bumpF = bumpF.map(v => Math.max(0, v - dt)); slotF = slotF.map(v => Math.max(0, v - dt));
+    for (const b of pb) {
+      b.vy += 260 * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+      if (!inside(b.x, b.y)) {
+        if (b.y > CY) { b.vx = -b.vx * .6; b.x = Math.max(PX0 + 5, Math.min(PX1 - 5, b.x)); }
+        else { const a = Math.atan2(b.y - CY, b.x - CX); b.x = CX + Math.cos(a) * (CR - 5); b.y = CY + Math.sin(a) * (CR - 5); b.vy = Math.abs(b.vy) * .4; b.vx *= -.6; }
+      }
+      const hit = (o, r, k) => {
+        const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy);
+        if (d < r && d > 0) {
+          const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
+          if (vn < 0) { b.vx -= (1 + k) * vn * nx; b.vy -= (1 + k) * vn * ny; b.vx += R(-8, 8); }
+          b.x = o.x + nx * r; b.y = o.y + ny * r; return true;
+        }
+      };
+      pegs.forEach(p => hit(p, 2.6, .45));
+      bumpers.forEach((o, i) => { if (hit(o, 8, 1.1)) { bumpF[i] = .07; b.vy -= 30; } });
+      if (b.y > 172) {
+        const i = Math.max(0, Math.min(4, (b.x - PX0) / ((PX1 - PX0) / 5) | 0));
+        slotF[i] = .25; expv = Math.min(1, expv + (slots[i].jack ? .12 : .03)); b.dead = true;
+        for (let k = 0; k < 4; k++) pf.push({ x: b.x, y: 172, vx: R(-30, 30), vy: R(-70, -30), t: .5, c: slots[i].jack ? '#ffd84a' : '#bfe8ff' });
+      }
+    }
+    pb = pb.filter(b => !b.dead);
+    pf.forEach(p => { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; }); pf = pf.filter(p => p.t > 0);
+  }
+  function drawB(t) {
+    rect(0, 0, W, H, '#1e1640');
+    c.fillStyle = '#3a2a7a'; c.beginPath(); c.arc(CX, CY, CR, Math.PI, 0); c.lineTo(PX1, PY1); c.lineTo(PX0, PY1); c.closePath(); c.fill();
+    c.strokeStyle = '#f28a1e'; c.lineWidth = 3; c.stroke();
+    for (let i = 0; i <= 18; i++) {                          // marquee lights chase around the arch
+      const a = Math.PI + i / 18 * Math.PI, on = (i + (t * 8 | 0)) % 3 === 0;
+      rect(CX + Math.cos(a) * CR - 1, CY + Math.sin(a) * CR - 1, 2, 2, on ? '#fff3a0' : '#ffd84a');
+    }
+    for (let y = CY + 8; y < PY1; y += 9) { rect(PX0 - 1, y, 2, 2, '#ffd84a'); rect(PX1 - 1, y, 2, 2, '#ffd84a'); }
+    rect(52, 32, 31, 11, '#1e1640'); rect(53, 33, 29, 9, '#2a1f4a'); rect(55, 36, 25 * expv, 3, '#ffd84a');
+    bumpers.forEach((o, i) => {
+      c.fillStyle = bumpF[i] > 0 ? '#ffffff' : o.c; c.beginPath(); c.arc(o.x, o.y, 6, 0, 7); c.fill();
+      c.strokeStyle = '#1e1640'; c.lineWidth = 1; c.stroke(); rect(o.x - 1, o.y - 1, 2, 2, '#ffffff');
+    });
+    pegs.forEach(p => rect(p.x - 1, p.y - 1, 2, 2, '#ffd84a'));
+    const sw = (PX1 - PX0) / 5;
+    slots.forEach((s, i) => {
+      const x = PX0 + i * sw;
+      rect(x + 1, 174, sw - 2, 20, slotF[i] > 0 ? '#8e7ae0' : '#4b3a90');
+      if (s.jack) { rect(x + 3, 177, sw - 6, 14, '#c92a3a'); for (let k = 0; k < 3; k++) rect(x + 5 + k * 5, 180, 4, 6, slotF[i] > 0 ? '#ffd84a' : '#5fcf6a'); }
+      else { c.fillStyle = s.c; c.beginPath(); c.moveTo(x + sw / 2, 177); c.lineTo(x + sw / 2 + 4, 183); c.lineTo(x + sw / 2, 189); c.lineTo(x + sw / 2 - 4, 183); c.fill(); }
+      if (i) rect(x - 1, 172, 2, 22, '#f2a51e');
+    });
+    pb.forEach(b => { rect(b.x - 1, b.y - 1, 3, 3, '#f4f0ff'); rect(b.x - 1, b.y - 1, 1, 1, '#ffffff'); });
+    pf.forEach(p => rect(p.x, p.y, 1, 1, p.c));
+    rect(0, 0, W, 20, '#160f30');                              // top HUD: level badge + exp bar
+    c.fillStyle = '#f2a51e'; c.beginPath(); c.arc(11, 10, 7, 0, 7); c.fill();
+    rect(9, 7, 4, 6, '#3a1c0a'); rect(22, 7, 108, 6, '#2a1f4a'); rect(23, 8, 106 * expv, 4, '#6a5ae0');
+    rect(0, 200, W, 40, '#160f30');                            // bottom: ball stock, PUSH, multiplier
+    rect(6, 208, 42, 18, '#f6f0dc'); c.fillStyle = '#c9c4d8'; c.beginPath(); c.arc(14, 217, 4, 0, 7); c.fill(); rect(22, 214, 22, 6, '#1e1640');
+    rect(87, 208, 42, 18, '#6ab8ff'); rect(97, 213, 22, 8, '#e8f4ff');
+    const pr = 13 + Math.sin(pushT * 6) * 1;
+    c.fillStyle = '#c45a10'; c.beginPath(); c.arc(CX, 218, pr + 1, 0, 7); c.fill();
+    c.fillStyle = '#f28a1e'; c.beginPath(); c.arc(CX, 217, pr, 0, 7); c.fill();
+    rect(CX - 7, 215, 14, 4, '#3a1c0a');
+  }
+
+  /* ---------- scene loop ---------- */
+  const SCENES = [
+    { dur: 9, reset: resetA, step: stepA, draw: drawA, cap: '전투 · 공은 소녀에게 돌아와야 다시 쏜다' },
+    { dur: 5.5, reset: resetB, step: stepB, draw: drawB, cap: '핀볼 머신 · 번 핀볼을 쏴서 볼·캐릭터 성장' }
+  ];
+  let si = 0, st = 0, last = performance.now();
+  const enter = i => { si = i; st = 0; SCENES[i].reset(); if (cap) cap.textContent = SCENES[i].cap; };
+  enter(0);
+  if (still) {                                                // reduced motion: one settled frame of the battle
+    for (let i = 0; i < 120; i++) stepA(1 / 30);
+    drawA(); return;
+  }
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!document.hidden) {
+      st += dt; const S0 = SCENES[si];
+      if (st > S0.dur) enter((si + 1) % SCENES.length);
+      SCENES[si].step(dt); SCENES[si].draw(now / 1000);
+      const edge = Math.min(st, SCENES[si].dur - st);          // short fade at each cut
+      if (edge < .25) { c.globalAlpha = 1 - edge / .25; rect(0, 0, W, H, '#0b0910'); c.globalAlpha = 1; }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<div class="edbar" id="edbar" hidden>
+  <button class="ed-toggle" id="edToggle" type="button">✎ 직접 수정</button>
+  <div class="ed-panel" id="edPanel" hidden>
+    <p class="ed-hint">글자를 눌러 바로 고치세요. 타일을 누르면 <b>타일 문구</b>와 <b>상세 내용</b>을 같이 고칠 수 있습니다. 굵게: Ctrl/⌘+B</p>
+    <div class="ed-row"><span class="ed-count" id="edCount">바뀐 곳 0</span><button type="button" class="ed-btn ghost" id="edCancel">취소</button><button type="button" class="ed-btn" id="edSave">저장</button></div>
+    <p class="ed-msg" id="edMsg" role="status"></p>
+  </div>
+</div>
+<script>window.__EDITS = {"tiles": {"t.loop.1": "전투 - 성장 - 침략"}, "sheets": {"loop": "<span class=\"eyebrow\">PRD ② 핵심 메커니즘<\/span><h2>전투 - 성장 - 침략<\/h2>\n<div class=\"diagram\"><svg viewBox=\"0 0 760 420\" role=\"img\" aria-label=\"코어 루프 한 사이클: 로비에서 레벨 전투 또는 침략, 결과, 핀볼 머신, 영구 성장, 다시 로비\">\n<defs><marker id=\"ar\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M0 0L10 5L0 10z\" fill=\"var(--muted)\"><\/path><\/marker><\/defs>\n<g fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"1.4\">\n<path d=\"M236 106H272\" marker-end=\"url(#ar)\"><\/path><path d=\"M488 106H524\" marker-end=\"url(#ar)\"><\/path><path d=\"M632 150V300\" marker-end=\"url(#ar)\"><\/path><path d=\"M524 344H488\" marker-end=\"url(#ar)\"><\/path><path d=\"M272 344H128V150\" marker-end=\"url(#ar)\"><\/path><path d=\"M200 150V224H272\" marker-end=\"url(#ar)\"><\/path><path d=\"M488 224H580V150\" marker-end=\"url(#ar)\"><\/path><\/g>\n<g font-family=\"Noto Sans KR, sans-serif\">\n<rect x=\"20\" y=\"62\" width=\"216\" height=\"88\" rx=\"10\" fill=\"var(--tile)\" stroke=\"var(--line)\"><\/rect><text x=\"34\" y=\"88\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">로비 · 출전 준비<\/text><text x=\"34\" y=\"110\" font-size=\"12.5\" fill=\"var(--muted)\">장착 볼 중 2개 골라 출전<\/text><text x=\"34\" y=\"128\" font-size=\"12.5\" fill=\"var(--muted)\">자동 사냥 핀볼 받기<\/text>\n<rect x=\"272\" y=\"62\" width=\"216\" height=\"88\" rx=\"10\" fill=\"var(--slime-soft)\" stroke=\"var(--slime)\" stroke-width=\"2\"><\/rect><text x=\"286\" y=\"88\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">전투<\/text><text x=\"286\" y=\"110\" font-size=\"12.5\" fill=\"var(--ink)\">웨이브 → 중간 → 최종 보스<\/text><text x=\"286\" y=\"128\" font-size=\"12.5\" fill=\"var(--ink)\">레벨업 카드 · 융합 · 캡슐<\/text><text x=\"286\" y=\"144\" font-size=\"11.5\" fill=\"var(--muted)\">판이 끝나면 초기화<\/text>\n<rect x=\"524\" y=\"62\" width=\"216\" height=\"88\" rx=\"10\" fill=\"var(--tile)\" stroke=\"var(--line)\"><\/rect><text x=\"538\" y=\"88\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">결과<\/text><text x=\"538\" y=\"110\" font-size=\"12.5\" fill=\"var(--muted)\">승패 모두 핀볼 지급<\/text><text x=\"538\" y=\"128\" font-size=\"12.5\" fill=\"var(--muted)\">클리어 20 + 2×레벨<\/text><text x=\"538\" y=\"144\" font-size=\"11.5\" fill=\"var(--muted)\">침략 승리: 살려주기 / 처치<\/text>\n<rect x=\"524\" y=\"300\" width=\"216\" height=\"88\" rx=\"10\" fill=\"var(--jack-soft)\" stroke=\"var(--jack)\" stroke-width=\"2\"><\/rect><text x=\"538\" y=\"326\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">핀볼 머신<\/text><text x=\"538\" y=\"348\" font-size=\"12.5\" fill=\"var(--ink)\">EXP 칸 96% · 잭팟 4%<\/text><text x=\"538\" y=\"366\" font-size=\"12.5\" fill=\"var(--ink)\">잭팟: 볼 · 캐릭터 · 핀볼<\/text>\n<rect x=\"272\" y=\"300\" width=\"216\" height=\"88\" rx=\"10\" fill=\"var(--tile)\" stroke=\"var(--line)\"><\/rect><text x=\"286\" y=\"326\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">영구 성장<\/text><text x=\"286\" y=\"348\" font-size=\"12.5\" fill=\"var(--muted)\">플레이어 Lv · 볼 Lv<\/text><text x=\"286\" y=\"366\" font-size=\"12.5\" fill=\"var(--muted)\">캐릭터 해금 · 강화<\/text>\n<rect x=\"272\" y=\"180\" width=\"216\" height=\"88\" rx=\"10\" fill=\"#f6e0da\" stroke=\"#c94a3a\" stroke-width=\"2\"><\/rect><text x=\"286\" y=\"206\" font-size=\"14\" font-weight=\"700\" fill=\"var(--ink)\">침략 (비동기 PvP)<\/text><text x=\"286\" y=\"228\" font-size=\"12.5\" fill=\"var(--ink)\">다른 유저 캐릭터가 보스로 등장<\/text><text x=\"286\" y=\"246\" font-size=\"12.5\" fill=\"var(--ink)\">웨이브 3 → 상대 · 60초 제한<\/text><text x=\"286\" y=\"262\" font-size=\"11.5\" fill=\"var(--muted)\">침략권 5개 · 30분마다 1개 충전<\/text><text x=\"208\" y=\"200\" font-size=\"12\" fill=\"var(--muted)\">침략<\/text><text x=\"240\" y=\"98\" font-size=\"12\" fill=\"var(--muted)\">레벨<\/text><text x=\"642\" y=\"232\" font-size=\"12\" fill=\"var(--muted)\">핀볼<\/text><text x=\"138\" y=\"282\" font-size=\"12\" fill=\"var(--muted)\">더 강해져서 재도전<\/text>\n<text x=\"20\" y=\"34\" font-size=\"15\" font-weight=\"700\" fill=\"var(--ink)\">로그라이크식 전투에서 획득한 재화로 핀볼 컨텐츠를 통한 영구 성장&nbsp;<\/text><\/g><\/svg><\/div>\n<h3>규칙<\/h3>\n<ul><li>보드 아래 70%를 자유롭게 움직이며, 장착한 볼을 쏩니다(최대 8종).<\/li>\n<li>공은 벽·좀비에 튕기며 피해를 주고, 바닥이나 몸에 닿으면 회수됩니다. <b>회수한 공만 다시 쏠 수 있습니다.<\/b><\/li>\n<li>좀비는 대형을 이뤄 내려오고, 죽으면 경험치 보석을 떨어뜨립니다. 직접 닿아야 먹습니다.<\/li>\n<li>레벨업하면 카드 3장 중 1장: 새 볼 / 볼 Lv+1 / Lv5 볼 두 개 융합(한 볼이 여러 기능).<\/li><\/ul>\n<h3>조작<\/h3>\n<ul><li><b>좌우 스틱(기본)<\/b>: 왼쪽 스틱으로 이동, 오른쪽 스틱으로 조준.<\/li>\n<li><b>탭 조준<\/b>: 가운데 스틱으로 이동, 보드를 탭해 조준 각도를 정함. 설정에서 선택.<\/li>\n<li>핀볼 머신: 배율을 고르고 PUSH를 누르고 있으면 한 사이클에 최대 20발.<\/li><\/ul>\n<p><b>PC 키보드·마우스<\/b><\/p>\n<ul><li><b>이동<\/b>: WASD 또는 방향키. 자동 조준일 때는 마우스로 누른 곳으로도 이동합니다.<\/li><li><b>조준<\/b>: T로 자동 조준을 끄면 마우스 방향으로 쏩니다. 다시 T를 누르면 자동 조준.<\/li><li><b>선택<\/b>: 레벨업 카드 1~3, 무료 강화 볼 1~8 · 아이템 Q/W/E, 침략 승리 후 1 살려주기 / 2 처치.<\/li><li><b>그 밖<\/b>: P 일시정지, Esc 설정.<\/li><\/ul>\n<h3>승패 / 성공 조건<\/h3>\n<ul><li><b>승리<\/b>: 웨이브를 버티고 최종 보스 처치 → 다음 레벨 해금<\/li>\n<li><b>패배<\/b>: HP 0<\/li>\n<li>중간 보스를 잡으면 좁던 보드가 넓어집니다.<\/li>\n<li>승패 모두 핀볼을 받습니다. 판 안 볼 레벨은 판이 끝나면 사라집니다.<\/li><\/ul>\n<h3>침략<\/h3>\n<ul><li><b>상대<\/b>: 다른 유저의 캐릭터가 최종 보스로 등장해, 그 유저가 장착한 볼로 탄막을 쏩니다. 지금은 가상 봇 데이터입니다.<\/li><li><b>진행<\/b>: 로비의 빨간 <b>침략<\/b> 버튼 → 유저 매칭 연출 → 전투. 일반 웨이브 3개 뒤 상대가 등장하고, 중간 보스는 없으며 보드는 처음부터 넓습니다. 60초 안에 쓰러뜨려야 합니다.<\/li><li><b>승리 후 선택<\/b>: <b>살려주기<\/b>는 핀볼을 많이(+8/12/18) 주고, <b>처치<\/b>는 랜덤 볼 1개를 줍니다. 패배해도 핀볼 1개를 받습니다.<\/li><li><b>리그<\/b>: 이기면 침략 점수 +30, 지면 −15. 브론즈부터 다이아까지 5개 리그가 있고, 리그가 오를수록 상대 탄막이 세지고 새 아레나의 볼이 보상에 나옵니다.<\/li><li><b>횟수<\/b>: 침략권 최대 5개, 30분마다 1개 충전. 같은 상대를 무한히 반복해 보상을 쌓지 못하게 막습니다.<\/li><\/ul>\n<h3>진행 흐름<\/h3>\n<ol><li>로비에서 <b>레벨<\/b> 또는 <b>침략<\/b>을 고르고, 장착 볼 중 2개를 골라 출전<\/li><li>전투: 레벨은 웨이브 → 중간 보스 → 최종 보스, 침략은 웨이브 → 상대 유저 캐릭터<\/li><li>결과: 핀볼 획득(침략 승리 시 살려주기는 핀볼, 처치는 볼)<\/li><li>핀볼 머신: 경험치(기본 스탯 상승) 또는 잭팟(볼·캐릭터·핀볼)<\/li><li>강해진 상태로 재도전<\/li><\/ol>", "balance": "<span class=\"eyebrow\">PRD ③ 밸런싱 / 수치 설계<\/span><h2>난이도 곡선, 주요 파라미터, 보상 구조<\/h2>\n<p class=\"lead\"><b>설계 의도<\/b>: 레벨 2까지는 기본 상태로도 무난하게 깨고, 레벨 3부터는 핀볼로 성장해야 수월하게 진행되도록 설계했습니다. 초반 두 레벨은 조작과 \"공이 돌아와야 다시 쏜다\"는 규칙과 공격이 막힐 때, 조작이 필요하다는 것을 익히는 구간이고, 레벨 3에서 처음으로 핀볼 머신에 들러 스탯과 볼을 키워 오도록 유도합니다.<\/p>\n<h3>난이도 곡선 (레벨 10개)<\/h3>\n<div class=\"tbl\"><table><thead><tr><th>구간<\/th><th class=\"num\">몬스터 HP 배율<\/th><th class=\"num\">받는 피해 배율<\/th><th class=\"num\">웨이브<\/th><th>새로 나오는 적<\/th><\/tr><\/thead><tbody>\n<tr><td>L1~4 입문<\/td><td class=\"num\">0.80 → 1.58<\/td><td class=\"num\">0.6 → 0.9<\/td><td class=\"num\">4~5<\/td><td>기어오는 · 군인 · 방패 경찰<\/td><\/tr>\n<tr><td>L5~9 성장<\/td><td class=\"num\">1.84 → 2.91<\/td><td class=\"num\">1.25 → 1.5<\/td><td class=\"num\">6<\/td><td>간호사 · 폭탄 조끼<\/td><\/tr>\n<tr><td>L10 마지막 벽<\/td><td class=\"num\">2.3<\/td><td class=\"num\">1.0<\/td><td class=\"num\">7<\/td><td>화염방사 · 전종 섞임<\/td><\/tr><\/tbody><\/table><\/div>\n<p class=\"note\">한 판 길이는 약 2분 20초. 처음 4분 20초였으나 \"호흡이 너무 길다\"는 판단으로 웨이브 길이를 절반으로 줄였습니다.<\/p>\n<h3>주요 파라미터<\/h3>\n<div class=\"tbl\"><table><thead><tr><th>파라미터<\/th><th class=\"num\">값<\/th><th>의도<\/th><\/tr><\/thead><tbody>\n<tr><td>볼 최대 레벨 / 장착 수<\/td><td class=\"num\">Lv5 / 8종<\/td><td>Lv5 두 개를 합쳐야 다음 단계<\/td><\/tr>\n<tr><td>이동 속도<\/td><td class=\"num\">초기값의 60%<\/td><td>공을 받으러 가는 판단에 무게를 둠<\/td><\/tr>\n<tr><td>핀볼 사이클<\/td><td class=\"num\">최대 20발<\/td><td>10발은 \"맛이 없어서\" 20발로<\/td><\/tr>\n<tr><td>배율<\/td><td class=\"num\">×1 · 2 · 3 · 5 · 10<\/td><td>공 1개가 핀볼 N개를 쓰고 보상도 ×N<\/td><\/tr>\n<tr><td>볼 강화 (영구)<\/td><td class=\"num\">Lv n→n+1에 사본 n장<\/td><td>골드 없이 중복 획득으로 강화<\/td><\/tr>\n<tr><td>캐릭터 해금<\/td><td class=\"num\">조각 10개<\/td><td>잭팟에서 조각을 모아 해금<\/td><\/tr><\/tbody><\/table><\/div>\n<h3>보상 구조<\/h3>\n<ul><li><b>레벨 보상<\/b>: 첫 클리어 핀볼 20 + 2 × 레벨, 재도전·실패 8 + 레벨<\/li>\n<li><b>핀볼 머신 칸<\/b>: 경험치 칸 96% · 잭팟 4%<\/li>\n<li><b>잭팟 슬롯머신<\/b>: 릴 3개(볼 / 캐릭터 조각 / 핀볼)를 모두 지급. 3개가 같으면 상위 보상(희귀 볼, 캐릭터 통째로, 핀볼 ×10)<\/li>\n<li><b>자동 사냥<\/b>: 접속하지 않은 동안 핀볼 적립, 최대 8시간<\/li>\n<li><b>침략<\/b>: 다른 유저(가상) 캐릭터와 60초 대결. 이기면 살려주기(핀볼) 또는 처치(랜덤 볼 1개). 침략권 5장, 30분마다 1장 충전<\/li><\/ul>", "fun": "<span class=\"eyebrow\">PRD ① 재미 가설 / 목표<\/span><h2>가볍게 즐기는 Ball x Pit식 전투에 핀볼 성장을 얹으면, 두 재미가 자연스럽게 맞물려 더 재미있어질까?<\/h2>\n<div class=\"cards\">\n<div class=\"card\"><span class=\"pill keep\">핵심 재미 1<\/span><b>두 장르의 조합<\/b><span>Ball x Pit의 조작·플레이 시스템·로그라이크 형식으로 싸우고, 뚜까펫처럼 핀볼을 통해 캐릭터와 성장 재화를 얻습니다. 전투에서 번 핀볼이 곧 성장이 되고, 성장한 만큼 다음 전투가 쉬워집니다.<\/span><\/div>\n<div class=\"card\"><span class=\"pill pink\">핵심 재미 2<\/span><b>가볍고 빠르게<\/b><span>한 판 약 2분, 한 손 세로 조작, 핀볼은 PUSH를 누르고 있으면 끝. 짧은 틈에 한 판 하고, 핀볼 한 번 쏘고 나올 수 있는 로그라이크 핀볼 액션입니다.<\/span><\/div>\n<\/div>\n<h3>재미가 생기는 지점<\/h3>\n<ul><li><b>전투 (Ball x Pit)<\/b>: 다양한 볼을 조합해 몰려오는 좀비 무리를 한꺼번에 날려버리는 쾌감이 있습니다. 좀비와 보스는 종류마다 패턴이 달라서, 상대에 맞춰 위치와 볼 조합을 바꿔 대처해야 합니다.<\/li>\n<li><b>보상 (뚜까펫)<\/b>: 보상을 숫자가 아니라 핀볼로 줘서, 떨어지는 동안 잭팟 칸을 응원하게 합니다. 패배해도 핀볼을 주니 \"한 판 더\"가 자연스럽습니다.<\/li>\n<li><b>연결<\/b>: 핀볼 경험치로 기본 스탯이 오르고, 잭팟으로 볼·캐릭터가 늘어서 다음 판에 바로 체감됩니다.<\/li><\/ul>\n<h3>목표 경험<\/h3>\n<p>1. 두가지 장르가 어색하지 않게 잘 어울러저서 재미있게 느껴지는가?<br>2. 그 재미가&nbsp;다시 한 번 플레이를 하고 싶은 마음으로 이어지는가?<\/p>", "decisions": "<span class=\"eyebrow\">AI 활용 ② 채택 / 미채택과 이유<\/span><h2>그대로 쓴 것, 고친 것, 버린 것<\/h2>\n<p class=\"lead\">AI의 제안은 세 가지 기준으로 걸렀습니다. <b>핵심 재미(쏘고 받는 전투, 핀볼 성장)에 힘을 보태는가<\/b>, <b>가볍고 빠른 플레이를 해치지 않는가<\/b>, <b>그 경험이 유저에게 적절한가<\/b>. 표의 \"의도\"는 각 결정으로 만들고 싶었던 플레이 경험입니다.<\/p>\n<div class=\"tbl\"><table><thead><tr><th>AI 제안 / 초안<\/th><th>결정<\/th><th>이유<\/th><th>의도<\/th><\/tr><\/thead><tbody>\n<tr><td>하단에 서서 위로 쏘는 고정 사격<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>Ball x Pit은 보드 안을 직접 걸어 다니며 몬스터 옆까지 간다. 상위 30%만 남기고 이동 가능하게.<\/td><td>위치 선정 자체를 플레이로 만들기. 피할지, 공을 받으러 갈지, 다가가 때릴지를 계속 판단하게.<\/td><\/tr>\n<tr><td>공 종류마다 계속 쏘는 구조<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>\"공은 항상 플레이어에게 돌아온 뒤 다시 나간다.\" 회수가 곧 공격력이 되도록.<\/td><td>쏘고 받는 리듬에서 손맛과 긴장이 생기도록.<\/td><\/tr>\n<tr><td>처음부터 넓은 맵<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>\"지금은 공간이 너무 넓어.\" 좁게 시작해 중간 보스를 잡으면 넓어지게.<\/td><td>한 판 안에서도 공간이 열리는 성장감을 주기 위해.<\/td><\/tr>\n<tr><td>경험치 즉시 획득<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>아이템으로 떨어뜨리고 직접 닿아 먹게. 움직일 이유를 하나 더 만듦.<\/td><td>위험을 감수하고 주우러 가는 선택을 만들기.<\/td><\/tr>\n<tr><td>고블린 주인공<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>주인공 톤이 게임 분위기와 맞지 않아 귀여운 아기 해골로.<\/td><td>컨셉 변경으로 인한 아트 폐기.<br><\/td><\/tr>\n<tr><td>흩어져 내려오는 몬스터<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>Ball x Pit처럼 정렬된 군단 대형으로 내려오게.<\/td><td>밀집한 무리를 한 번에 쓸어버리는 쾌감, 볼 조합이 빛나는 상황을 만들기.<\/td><\/tr>\n<tr><td>움직이는 성 컨셉 + 2.5D 아트 + 성 시안 6종<\/td><td><span class=\"pill drop\">아트 폐기<\/span> <span class=\"pill keep\">침략 채택<\/span><\/td><td>성 아트가 의도한 톤과 달라, 아트는 픽셀로 되돌리고 다른 유저를 침략하는 시스템만 남김.<\/td><td>아트 비용 대비 효과가 낮은 부분은 덜고, 더욱 직관적으로 보일 수 있는 쪽을 선택.<\/td><\/tr>\n<tr><td>UI를 지금 다듬을지 (AI: 나중에)<\/td><td><span class=\"pill keep\">채택<\/span><\/td><td>화면 구조가 아직 바뀌는 중이라 지금 다듬으면 다시 깨짐.<\/td><td>구조가 확정되기 전에 폴리싱 비용을 쓰지 않기.<\/td><\/tr>\n<tr><td>장비 6부위 + 골드 강화, 골드 재화<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>재화 흐름을 \"핀볼 → 스탯 → 잭팟 → 볼·캐릭터\" 하나로 줄이기 위해. 장비 대신 볼 8종을 장착하고, 볼 강화는 중복 사본으로, 모든 보상은 핀볼로.<\/td><td>성장 방법을 핀볼 하나에 집중시켜서 중요도를 높이고, 루프가 원활하게 돌아갈 수 있게끔.<\/td><\/tr>\n<tr><td>핀볼 보상 결과 팝업<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>들어가는 족족 경험치 아이콘이 바로 날아가게 (뚜까펫 방식).<\/td><td>보상을 받는 순간의 손맛이 팝업으로 끊기지 않게.<\/td><\/tr>\n<tr><td>핀볼 한 사이클 10발<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>10발로는 한 번 쏘는 보상감이 부족해 20발로.<\/td><td>한 사이클에 보상을 받는 감각이 충분하도록.<\/td><\/tr>\n<tr><td>레벨 목록 화면<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>굳이 보여 줄 필요 없음. 진입 시 공 2개 선택, 레벨 1은 바로 시작.<\/td><td>첫 게임에 들어가기까지의 혼란과 과정을 줄이기.<\/td><\/tr>\n<tr><td>한 판 약 4분 20초<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>\"레벨 플레이 호흡이 너무 길다.\" 약 2분 20초로.<\/td><td>짧은 틈에 한 판 하는 가벼운 세션.<\/td><\/tr>\n<tr><td>원래 컨셉: 내가 몬스터, 몰려오는 용사를 잡는다<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>주인공을 사람으로, 적을 좀비로 바꾸고 아트 퀄리티를 올리며 세계관을 교체.<\/td><td>사람 vs 좀비라는 한눈에 이해되는 대립 구도.<\/td><\/tr>\n<tr><td>아트 3안: 코드 픽셀 / 벡터 카툰 / 이미지 생성<\/td><td><span class=\"pill keep\">픽셀 채택<\/span><\/td><td>파일 하나로 빠르게 고칠 수 있음. 이미지 생성은 서비스 잔액 부족으로 실패.<\/td><td>현실적인 아트를 선택하기 위함.<\/td><\/tr>\n<tr><td>거북 주인공 (등딱지에 대포)<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>크게 키우면 등딱지가 네모 덩어리로 깨짐. 엔터 더 건전을 참고한 총 든 사람 8명으로, 기본은 소녀.<\/td><td>여러 명을 모으는 캐릭터 수집으로 확장할 수 있게.<\/td><\/tr>\n<tr><td>4족 보행 좀비 개<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>혼자 옆모습이라 다른 좀비와 시점이 맞지 않음. 기어오는 좀비로 교체.<\/td><td>화면의 시점을 통일해 비주얼이 어색하지 않게.<\/td><\/tr>\n<tr><td>좀비 사망 폭발 아이템 (피해 100~200%)<\/td><td><span class=\"pill mod\">하향<\/span><\/td><td>\"주변 좀비들이 나오자마자 다 죽어버려.\" 피해를 줄이고 연쇄 폭발을 막음.<\/td><td>빌드는 강해져도 화면이 한순간에 비어 긴장이 사라지지 않게.<\/td><\/tr>\n<tr><td>침략 보상 하향<\/td><td><span class=\"pill drop\">거절<\/span><\/td><td>\"침략 보상은 낮추지 말고.\" 대신 침략권으로 무한 반복만 막음.<\/td><td>침략의 동기는 지키고, 반복은 횟수로 조절하기.<\/td><\/tr>\n<tr><td>수동 조작 4안 (AI 제안)<\/td><td><span class=\"pill keep\">2안 채택<\/span><\/td><td>좌우 스틱 / 탭 조준을 설정에서 고르게.<\/td><td>손에 맞는 조작을 고를 수 있게.<\/td><\/tr>\n<tr><td>화염방사 좀비가 불 웅덩이를 만듦<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>이름에 맞게 일직선 화염을 뿜도록 바꾸고, 웅덩이는 독 뿜는 좀비로 분리.<\/td><td>컨셉에 어울리는 공격을 하게하기 위함.<\/td><\/tr>\n<tr><td>방패 좀비가 정면 공에 일부 피해<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>정면 공은 무조건 막음. 컨셉이 다른 좀비는 방패를 들지 않게.<\/td><td>규칙이 명확해야 유저가 명확하게 이해할 수 있다.<\/td><\/tr>\n<tr><td>잭팟 보상 아래 확률 표기<\/td><td><span class=\"pill drop\">폐기<\/span><\/td><td>\"각 보상 하단에 확률 나오는 거 지워.\"<\/td><td>불필요한 정보 제거.<\/td><\/tr>\n<tr><td>침략 상대 목록<\/td><td><span class=\"pill mod\">수정<\/span><\/td><td>클래시 로얄 아레나처럼 별도 탭으로, 아레나를 뚫을 때마다 새 볼 해금.<\/td><td>장기 목표와 새 볼 해금이라는 다음 판의 동기를 만들기.<\/td><\/tr><\/tbody><\/table><\/div>"}};</script>
+<script>
+/* Owner editing: text overrides live in edits.json (a data file beside the page) and are saved with the
+   artifact files form, so the page source never changes. Keys: "head.N", "hero.N", "t.<tileId>.N", sheets by id. */
+(() => {
+  const NOEDIT = new Set(['log_a', 'log_b']);
+  const clean = html => {
+    const t = document.createElement('template'); t.innerHTML = html;
+    t.content.querySelectorAll('script,iframe,object,embed,link,meta,style,form').forEach(n => n.remove());
+    t.content.querySelectorAll('*').forEach(el => [...el.attributes].forEach(a => {
+      if (/^on/i.test(a.name) || (/^(href|src|xlink:href)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name);
+    }));
+    return t.innerHTML;
+  };
+  const groups = () => {
+    const out = [];
+    out.push(['head', document.querySelector('header.top'), '.eyebrow, h1, .meta']);
+    out.push(['hero', document.querySelector('.cab .info'), '.eyebrow, h2, p']);
+    document.querySelectorAll('.tile[data-open]').forEach(t => out.push(['t.' + t.dataset.open, t, '.tag, h2, .hyp, p, blockquote']));
+    return out;
+  };
+  const fields = {};                                   // key -> element
+  groups().forEach(([pre, root, sel]) => root && root.querySelectorAll(sel).forEach((el, i) => { fields[pre + '.' + i] = el; }));
+  const DEF = { tiles: Object.fromEntries(Object.entries(fields).map(([k, el]) => [k, el.innerHTML])), sheets: { ...S } };
+  let SAVED = { tiles: {}, sheets: {} }, draft = { tiles: {}, sheets: {} }, editing = false, cur = location.hash.slice(1) || null;
+
+  function apply() {
+    const m = { tiles: { ...SAVED.tiles, ...draft.tiles }, sheets: { ...SAVED.sheets, ...draft.sheets } };
+    for (const k in fields) fields[k].innerHTML = k in m.tiles ? clean(m.tiles[k]) : DEF.tiles[k];
+    for (const id in DEF.sheets) S[id] = id in m.sheets ? clean(m.sheets[id]) : DEF.sheets[id];
+  }
+  Promise.resolve(window.__EDITS || null).then(j => {
+    if (j && typeof j === 'object') { SAVED = { tiles: j.tiles || {}, sheets: j.sheets || {} }; apply(); }
+  }).catch(() => {});
+
+  const bar = document.getElementById('edbar'), panel = document.getElementById('edPanel'), toggle = document.getElementById('edToggle');
+  const msg = document.getElementById('edMsg'), count = document.getElementById('edCount'), sheetBody = document.getElementById('sheetBody');
+  const edTile = document.getElementById('edTile');
+  const n = () => Object.keys(draft.tiles).length + Object.keys(draft.sheets).length;
+  const refresh = () => { count.textContent = '바뀐 곳 ' + n(); };
+  const inline = () => ['head', 'hero'].flatMap(p => Object.keys(fields).filter(k => k.startsWith(p + '.')));
+
+  function setEditing(on) {
+    editing = on; document.documentElement.classList.toggle('editing', on);
+    panel.hidden = !on; toggle.textContent = on ? '✎ 수정 중' : '✎ 직접 수정'; msg.textContent = '';
+    inline().forEach(k => { fields[k].contentEditable = on ? 'true' : 'false'; });
+    if (!on) { sheetBody.contentEditable = 'false'; edTile.hidden = true; }
+    else if (!document.getElementById('sheetBg').hidden && cur) decorate(cur);
+    refresh();
+  }
+  inline().forEach(k => fields[k].addEventListener('input', () => { draft.tiles[k] = fields[k].innerHTML; refresh(); }));
+
+  function decorate(id) {                              // sheet open in edit mode: tile fields on top, body editable
+    edTile.innerHTML = ''; edTile.hidden = true; sheetBody.contentEditable = 'false';
+    if (!editing || NOEDIT.has(id)) return;
+    const keys = Object.keys(fields).filter(k => k.startsWith('t.' + id + '.'));
+    if (keys.length) {
+      const h = document.createElement('p'); h.className = 'ed-label'; h.textContent = '타일 문구 (목록 화면에 보이는 글)'; edTile.appendChild(h);
+      keys.forEach(k => {
+        const box = document.createElement('div'); box.className = 'ed-field'; box.contentEditable = 'true';
+        box.innerHTML = fields[k].innerHTML;
+        box.addEventListener('input', () => { draft.tiles[k] = box.innerHTML; fields[k].innerHTML = clean(box.innerHTML); refresh(); });
+        edTile.appendChild(box);
+      });
+      const h2 = document.createElement('p'); h2.className = 'ed-label'; h2.textContent = '상세 내용 (아래를 바로 고치세요)'; edTile.appendChild(h2);
+      edTile.hidden = false;
+    }
+    sheetBody.contentEditable = 'true';
+  }
+  sheetBody.addEventListener('input', () => {
+    if (!editing || !cur || NOEDIT.has(cur)) return;
+    const c = sheetBody.cloneNode(true); c.removeAttribute('contenteditable');
+    const h = c.querySelector('#sheetTitle'); if (h) h.removeAttribute('id');
+    draft.sheets[cur] = c.innerHTML; S[cur] = clean(c.innerHTML); refresh();
+  });
+  const baseOpen = openSheet;
+  openSheet = function (id) {
+    if (editing && cur && !document.getElementById('sheetBg').hidden && sheetBody.contains(document.activeElement)) sheetBody.blur();
+    baseOpen(id); cur = id; decorate(id);
+  };
+  // in edit mode a click inside editable text must not trigger the tile/sheet links underneath
+  document.addEventListener('click', e => {
+    if (editing && e.target.closest('[contenteditable="true"]') && e.target.closest('[data-open]') && !e.target.closest('.tile')) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+
+  document.getElementById('edCancel').addEventListener('click', () => { draft = { tiles: {}, sheets: {} }; apply(); if (cur && !document.getElementById('sheetBg').hidden) openSheet(cur); setEditing(false); });
+  toggle.addEventListener('click', () => setEditing(!editing));
+
+  (async () => {
+    const use = window.claude && window.claude.use;
+    if (!use) return;
+    const [art, user] = await Promise.all([window.claude.use('artifact'), window.claude.use('user')]);
+    if (!art) return;
+    if (user && !(await user.canEdit())) return;
+    bar.hidden = false;
+    document.getElementById('edSave').addEventListener('click', async () => {
+      if (!n()) { msg.textContent = '바뀐 곳이 없습니다.'; return; }
+      const next = { tiles: { ...SAVED.tiles, ...draft.tiles }, sheets: { ...SAVED.sheets, ...draft.sheets } };
+      msg.textContent = '저장 중…';
+      try {
+        await art.publish({ 'edits.json': { content: JSON.stringify(next, null, 1), contentType: 'application/json' } });
+        SAVED = next; draft = { tiles: {}, sheets: {} }; msg.textContent = '저장했습니다. 보는 사람 모두에게 반영됩니다.'; refresh();
+      } catch (err) {
+        const c = err && err.code;
+        if (c === 'not_writer' || c === 'not_granted' || c === 'not_declared' || c === 'consent_required' || c === 'capability_disabled') { msg.textContent = '이 화면에서는 저장할 수 없습니다(보기 전용).'; }
+        else if (c === 'conflict') { msg.textContent = '다른 곳에서 먼저 저장해 새 버전으로 다시 불러옵니다.'; }
+        else if (c === 'rate_limited') { msg.textContent = '저장이 너무 잦습니다. 잠시 후 다시 눌러주세요.'; }
+        else { msg.textContent = '저장에 실패했습니다. 잠시 후 다시 시도해주세요.'; }
+      }
+    });
+  })();
+})();
+</script>
+
+</body>
+</html>

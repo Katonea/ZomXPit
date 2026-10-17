@@ -3,5 +3,6 @@
 좀비 무리를 공으로 튕겨 잡는 세로형 HTML5 게임 (몬스터 볼핏). 파일 하나(`index.html`)로 동작한다.
 
 - 플레이: https://katonea.github.io/zomxpit/
+- 과제 제출 사이트 (PRD · AI 활용 내역): https://katonea.github.io/zomxpit/prd/
 - 폰에서: 위 주소를 열고 브라우저 메뉴의 "홈 화면에 추가"를 누르면 전체 화면 앱처럼 실행된다.
 - 진동: 안드로이드 크롬에서 동작 (설정 팝업에서 켜고 끔). iOS 사파리는 웹 진동을 지원하지 않는다.
