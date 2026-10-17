@@ -2445,7 +2445,7 @@ const FREE_TILE = i => ({x:36 + (i%3)*220, y:420 + Math.floor(i/3)*142, w:208, h
 const ITEM_TILE = i => S.fu && S.fu.gear ? {x:i === 2 && S.fu.items.length === 3 ? 203 : 36 + (i%2)*334, y:440 + Math.floor(i/2)*262, w:314, h:242} // 장비 캡슐: 큰 카드 2열 (3개면 마지막은 가운데)
   : {x:36 + i*220, y:420 + Math.ceil(freeCand().length/3)*142 + 60, w:208, h:186};
 const freeBalls = () => S.fu && S.fu.gear ? [] : freeCand(); // 장비 캡슐은 볼 강화 칸 없음
-const ITEM_KEY = 'QWE';
+const ITEM_KEY = 'QWE'; // PC 단축키 (화면엔 표시 안 함, 폰은 터치)
 function fitLabel(s, x, y, size, maxW, c, al, w) { ctx.font = (w || 700) + ' ' + size + 'px ' + FONT; const k = Math.min(1, maxW/ctx.measureText(s).width); uiLabel(s, x, y, Math.floor(size*k), c, al, w); }
 function freeupUI() { // 무료 강화: 어두워지고 금빛 빛살이 도는 가운데 남은 횟수, 볼 타일(강화) + 아이템 타일
   const f = S.fu, T = performance.now()/1000, sc = 1 + Math.max(0, .3 - f.t)*3;
@@ -2472,7 +2472,7 @@ function freeupUI() { // 무료 강화: 어두워지고 금빛 빛살이 도는 
       uiLabel(evo ? '진화!' : n ? 'Lv' + n + ' → Lv' + (n + 1) : '새 아이템', r.x + r.w/2, r.y + 26, 17, '#fff', 'center', 900);
       if (evo) { uiItem(it.evo[0], r.x + 40, r.y + 66, 15); uiItem(it.evo[1], r.x + r.w - 40, r.y + 66, 15); }
       const B = r.h > 200; // 큰 카드(장비 캡슐): 그림·글자 크게
-      uiItem(o.id, r.x + r.w/2, r.y + (B ? 92 : 78), B ? 36 : 27); uiKeyBadge(r.x + 22, evo ? r.y + 100 : r.y + 58, ITEM_KEY[i]);
+      uiItem(o.id, r.x + r.w/2, r.y + (B ? 92 : 78), B ? 36 : 27);
       fitLabel(it.name, r.x + r.w/2, r.y + (B ? 164 : 136), B ? 27 : 21, r.w - 20, UI.ink, 'center', 900);
       const ds = evo ? it.d() : itemDesc(o.id, n + 1), cut = ds.indexOf(', ');
       if (B) { const ls = wrapLines(ds, 19, r.w - 28, 700).slice(0, 2); ls.forEach((l, k) => uiLabel(l, r.x + r.w/2, r.y + (ls.length > 1 ? 196 : 206) + k*24, 19, '#6a5a8a', 'center', 700)); }
