@@ -103,6 +103,8 @@ const BALL_RARITY = {fire:'common', frost:'common', poison:'common', wind:'commo
   vamp:'rare', giant:'rare', homing:'rare', curse:'rare', crit:'rare', stun:'rare', echo:'unique', meteor:'unique', holy:'unique',
   lucky:'common', rot:'common', swift:'common', acid:'uncommon', ricochet:'uncommon', shatter:'uncommon', nova:'rare', gravity:'rare', execute:'rare', prism:'unique', chrono:'unique', phoenix:'unique'};
 const BALL_IDS = Object.keys(BALL_RARITY), DECK_MAX = 8, BALL_MAXLV = 10;
+const RAR_ORDER = ['common', 'uncommon', 'rare', 'unique'];
+const ballOrder = (ids = BALL_IDS) => ids.slice().sort((a, b) => RAR_ORDER.indexOf(BALL_RARITY[a]) - RAR_ORDER.indexOf(BALL_RARITY[b]) || FN[a].name.localeCompare(FN[b].name, 'ko')); // 화면 표시 순서: 희귀도 낮은 것부터, 같은 희귀도는 이름순
 const openPool = r => { const o = BALL_IDS.filter(id => ballOpen(id)), p = o.filter(id => BALL_RARITY[id] === r); return p.length ? p : o; }; // 그 등급의 해금 볼 (없으면 해금 볼 전체)
 const ballCopies = lv => lv;                                              // 다음 레벨에 필요한 사본 (Lv1→2: 1장, Lv2→3: 2장 ...)
 const ballBonus = id => { const o = META.bag && META.bag[id]; return o ? .1*(o.lv - 1) : 0; };
@@ -2322,7 +2324,7 @@ const COL_TILE = i => ({x:30 + (i%10)*66.4, y:528 + Math.floor(i/10)*118, w:62, 
 function ballButtons() {
   const out = [];
   for (let i = 0; i < DECK_MAX; i++) out.push({...DECK_TILE(i), kind:'deck', id:META.deck[i], act:() => { if (META.deck[i]) BS.sel = META.deck[i]; }});
-  BALL_IDS.forEach((id, i) => out.push({...COL_TILE(i), kind:'col', id, act:() => { BS.sel = id; }}));
+  ballOrder().forEach((id, i) => out.push({...COL_TILE(i), kind:'col', id, act:() => { BS.sel = id; }}));
   const id = BS.sel, o = id && META.bag[id];
   if (o) {
     const on = META.deck.includes(id), mx = o.lv >= BALL_MAXLV;
@@ -2984,7 +2986,7 @@ function drawFlights() { // 화면 좌표 연출: 날아가는 경험치 아이�
 // 캐릭터 시작 볼은 항상 함께 가고, 장착한 볼(최대 8개) 중 2개를 더 골라 처음부터 들고 간다. 나머지 볼은 레벨업 카드의 '새 볼'로 나온다
 const PREP = {next:null};
 const startIds = () => { const c = CHAR[META.sel] ? CHAR[META.sel].start : []; return c === 'random2' ? [] : c.flat(); };
-const prepPool = () => META.deck.filter(id => !startIds().includes(id));
+const prepPool = () => ballOrder(META.deck.filter(id => !startIds().includes(id)));
 const prepNeed = () => Math.min(2, prepPool().length);
 function openPrep(next) {
   PREP.next = next; const pool = prepPool(); META.pick = (META.pick || pool).filter(id => pool.includes(id)).slice(0, 2);
